@@ -58,7 +58,10 @@ def generar_grafico_distribucion_tiempos(df, ruta_salida="graficos/distribucion_
     datos_por_cat = [df[df["categoria"] == cat]["tiempo_lectura_est_min"] for cat in categorias]
 
     plt.figure(figsize=(10, 6))
-    bp = plt.boxplot(datos_por_cat, patch_artist=True, tick_labels=categorias)
+    try:
+        bp = plt.boxplot(datos_por_cat, patch_artist=True, tick_labels=categorias)
+    except TypeError:
+        bp = plt.boxplot(datos_por_cat, patch_artist=True, labels=categorias)
 
     colores = ["#2B6CB0", "#4299E1", "#63B3ED", "#90CDF4", "#CBD5E0"]
     for patch, color in zip(bp["boxes"], colores[:len(categorias)]):
