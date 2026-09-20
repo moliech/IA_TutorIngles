@@ -25,7 +25,7 @@ def main():
     generar_todas_las_visualizaciones(df)
 
     print("\n[INFO] 4. Generando informe ejecutivo dinámico en Markdown...")
-    generar_informe(ruta_csv=ruta_csv, ruta_salida="informe_proyecto.md")
+    generar_informe(ruta_csv=ruta_csv, ruta_salida="informes/informe_proyecto.md")
 
     print("\n=========================================================")
     print("  [ÉXITO] Proceso finalizado correctamente sin errores.  ")

@@ -3,7 +3,7 @@ import pandas as pd
 
 def generar_informe(
     ruta_csv="data/lecturas_ingles.csv",
-    ruta_salida="informe_proyecto.md"
+    ruta_salida="informes/informe_proyecto.md"
 ):
     """
     Genera un informe dinámico ejecutivo en formato Markdown a partir de los datos procesados,
@@ -106,6 +106,9 @@ def generar_informe(
     lineas.append("")
     lineas.append("---")
     lineas.append("*Informe generado automáticamente por el módulo `src/generar_informe.py` del proyecto IA Tutor de Inglés.*")
+
+    if os.path.dirname(ruta_salida):
+        os.makedirs(os.path.dirname(ruta_salida), exist_ok=True)
 
     with open(ruta_salida, "w", encoding="utf-8") as archivo:
         archivo.write("\n".join(lineas))
