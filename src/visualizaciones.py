@@ -7,22 +7,44 @@ def generar_grafico_cefr_palabras(df, ruta_salida="graficos/distribucion_cefr_pa
     Genera un gráfico de barras con el promedio de palabras por nivel CEFR.
     """
     os.makedirs(os.path.dirname(ruta_salida), exist_ok=True)
-    
-    promedio_palabras = df.groupby("nivel_cefr")["conteo_palabras"].mean()
-    niveles_ordenados = ["A1", "A2", "B1", "B2", "C1", "C2"]
-    promedio_palabras = promedio_palabras.reindex([n for n in niveles_ordenados if n in promedio_palabras.index])
-    
-    plt.figure(figsize=(9, 5.5))
-    barras = plt.bar(promedio_palabras.index, promedio_palabras.values, color='#2B6CB0', alpha=0.85, width=0.55)
-    
-    # Agregar etiquetas sobre las barras
-    for barra in barras:
-        yval = barra.get_height()
-        plt.text(barra.get_x() + barra.get_width()/2.0, yval + 5, f'{yval:.0f} pal.', ha='center', va='bottom', fontsize=9, fontweight='bold', color='#1A365D')
-        
-    plt.title("Distribución del Conteo Promedio de Palabras por Nivel CEFR", fontsize=13, fontweight='bold', pad=14, color='#1A365D')
-    plt.xlabel("Nivel CEFR (Marco Común Europeo)", fontsize=11, labelpad=8, color='#2D3748')
-    plt.ylabel("Promedio de Palabras por Texto", fontsize=11, labelpad=8, color='#2D3748')
+
+    categorias =df["categoria"].unique()
+
+    datos_por_cat = [
+        df[df["categoria"] ==cat]["tiempo_lectura_est_min"]
+        for cat in categorias
+    ]
+   
+    plt.figure(figsize=(10,6))
+
+    bp = plt.boxplot(
+        datos_por_cat,
+        patch_artist=True,
+        tick_labels=categorias
+    )
+
+    colores = [
+         "#2B6CB0",
+         "#4299E1",
+         "#63B3ED",
+         "#90CDF4",
+         "#CBD5E0"
+
+    ]
+
+    for patch, color in zip(bp["boxes"], colores):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+
+
+    plt.title(
+
+        "3.er  Grafico PLUS: Distribucion de tiempos de lectura por categoria"
+    )
+
+
+    plt.xlabel("categoria tematica")
+    plt.ylabel("tiempo estimado de lectura (min)")
     plt.grid(axis="y", linestyle="--", alpha=0.5)
     plt.ylim(0, max(promedio_palabras.values) * 1.15)
     plt.tight_layout()

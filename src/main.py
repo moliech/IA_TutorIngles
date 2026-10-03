@@ -3,6 +3,11 @@ from cargar_datos import cargar_lecturas
 from eda_numpy import calcular_estadisticas_numpy
 from visualizaciones import generar_todas_las_visualizaciones
 from generar_informe import generar_informe
+from preparacion_datos_pandas import (
+    explorar_y_limpiar_datos,
+    generar_graficos_seaborn,
+    preparar_datos_ml
+)
 
 def main():
     print("=========================================================")
@@ -24,8 +29,23 @@ def main():
     print("\n[INFO] 3. Generando visualizaciones estadísticas (Matplotlib)...")
     generar_todas_las_visualizaciones(df)
 
-    print("\n[INFO] 4. Generando informe ejecutivo dinámico en Markdown...")
-    generar_informe(ruta_csv=ruta_csv, ruta_salida="informes/informe_proyecto.md")
+    generar_informe(
+        ruta_csv="data/lecturas_ingles.csv",
+        ruta_salida="informe_proyecto.md"
+    )
+    print(
+        "\n[INFO] 5. Ejecutando análisis con Pandas, "
+        "Seaborn y One-Hot Encoding (Clase 8)..."
+    )
+
+    df_limpio = explorar_y_limpiar_datos(
+        "data/lecturas_ingles.csv"
+    )
+
+    generar_graficos_seaborn(df_limpio)
+
+    df_ml = preparar_datos_ml(df_limpio)
+    print("Analisis finalizado correctamente.")
 
     print("\n=========================================================")
     print("  [ÉXITO] Proceso finalizado correctamente sin errores.  ")
