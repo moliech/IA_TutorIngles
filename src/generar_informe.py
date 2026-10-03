@@ -76,23 +76,24 @@ def generar_informe(
     graficos = [
         (
             "Figura 1: Distribución del Conteo Promedio de Palabras por Nivel CEFR",
-            "graficos/distribucion_cefr_palabras.png",
+            "../graficos/distribucion_cefr_palabras.png",
             "Muestra cómo la extensión de los textos aumenta de forma progresiva desde el nivel A1 hasta el nivel C2."
         ),
         (
             "Figura 2: Relación entre la Extensión del Texto y la Dificultad Léxica",
-            "graficos/relacion_dificultad_extension.png",
+            "../graficos/relacion_dificultad_extension.png",
             "Evidencia la correlación entre el volumen de palabras y el índice de dificultad léxica del vocabulario."
         ),
         (
             "Figura 3: Distribución de Tiempos Estimados de Lectura por Categoría Temática",
-            "graficos/distribucion_tiempos_categoria.png",
+            "../graficos/distribucion_tiempos_categoria.png",
             "Diagrama de cajas (Boxplot) que compara la dispersión y tiempos promedios requeridos para completar lecturas según su área temática."
         )
     ]
 
     for titulo, ruta, descripcion in graficos:
-        if os.path.exists(ruta):
+        ruta_disco = ruta.replace("../", "")
+        if os.path.exists(ruta_disco):
             lineas.append(f"### {titulo}")
             lineas.append("")
             lineas.append(f"![{titulo}]({ruta})")

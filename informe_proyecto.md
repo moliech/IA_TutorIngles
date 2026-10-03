@@ -34,19 +34,19 @@ La diversificación temática del dataset permite ofrecer lecturas contextualiza
 
 ### Figura 1: Distribución del Conteo Promedio de Palabras por Nivel CEFR
 
-![Figura 1: Distribución del Conteo Promedio de Palabras por Nivel CEFR](graficos/distribucion_cefr_palabras.png)
+![Figura 1: Distribución del Conteo Promedio de Palabras por Nivel CEFR](../graficos/distribucion_cefr_palabras.png)
 
 _Muestra cómo la extensión de los textos aumenta de forma progresiva desde el nivel A1 hasta el nivel C2._
 
 ### Figura 2: Relación entre la Extensión del Texto y la Dificultad Léxica
 
-![Figura 2: Relación entre la Extensión del Texto y la Dificultad Léxica](graficos/relacion_dificultad_extension.png)
+![Figura 2: Relación entre la Extensión del Texto y la Dificultad Léxica](../graficos/relacion_dificultad_extension.png)
 
 _Evidencia la correlación entre el volumen de palabras y el índice de dificultad léxica del vocabulario._
 
 ### Figura 3: Distribución de Tiempos Estimados de Lectura por Categoría Temática
 
-![Figura 3: Distribución de Tiempos Estimados de Lectura por Categoría Temática](graficos/distribucion_tiempos_categoria.png)
+![Figura 3: Distribución de Tiempos Estimados de Lectura por Categoría Temática](../graficos/distribucion_tiempos_categoria.png)
 
 _Diagrama de cajas (Boxplot) que compara la dispersión y tiempos promedios requeridos para completar lecturas según su área temática._
 
