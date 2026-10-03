@@ -81,9 +81,9 @@ En el marco de la **Clase 8**, se incorporó el módulo [src/preparacion_datos_p
    - Transformación de variables cualitativas `nivel_cefr` y `categoria` mediante `pd.get_dummies()`.
    - Exportación de la matriz codificada resultante a [data/lecturas_preparadas_ml.csv](data/lecturas_preparadas_ml.csv).
 4. **Visualizaciones Estadísticas Avanzadas con Seaborn:**
-   - [`graficos/seaborn_distribucion_ppm.png`](./graficos/seaborn_distribucion_ppm.png): Histograma con estimación de densidad de núcleo (KDE) de la velocidad PPM.
-   - [`graficos/seaborn_palabras_por_cefr.png`](./graficos/seaborn_palabras_por_cefr.png): Diagrama de cajas (*Boxplot*) de extensión de palabras comparada por Nivel CEFR.
-   - [`graficos/seaborn_dificultad_vs_tiempo.png`](./graficos/seaborn_dificultad_vs_tiempo.png): Diagrama de dispersión (*Scatterplot*) relacionando dificultad léxica y tiempo estimado por categoría temática.
+   - [`graficos/seaborn_distribucion_ppm.png`](./graficos/seaborn_distribucion_ppm.png?raw=true): Histograma con estimación de densidad de núcleo (KDE) de la velocidad PPM.
+   - [`graficos/seaborn_palabras_por_cefr.png`](./graficos/seaborn_palabras_por_cefr.png?raw=true): Diagrama de cajas (*Boxplot*) de extensión de palabras comparada por Nivel CEFR.
+   - [`graficos/seaborn_dificultad_vs_tiempo.png`](./graficos/seaborn_dificultad_vs_tiempo.png?raw=true): Diagrama de dispersión (*Scatterplot*) relacionando dificultad léxica y tiempo estimado por categoría temática.
 
 ---
 
@@ -92,44 +92,44 @@ En el marco de la **Clase 8**, se incorporó el módulo [src/preparacion_datos_p
 El sistema genera automáticamente 6 gráficos analíticos en la carpeta `graficos/`:
 
 ### 1. Conteo Promedio de Palabras por Nivel CEFR (Matplotlib)
-<img src="./graficos/distribucion_cefr_palabras.png" width="700" alt="Distribución CEFR Palabras" />
+<img src="./graficos/distribucion_cefr_palabras.png?raw=true" width="700" alt="Distribución CEFR Palabras" />
 
-*Archivo exportado:* [`graficos/distribucion_cefr_palabras.png`](./graficos/distribucion_cefr_palabras.png)
+*Archivo exportado:* [`graficos/distribucion_cefr_palabras.png`](./graficos/distribucion_cefr_palabras.png?raw=true)
 
 ---
 
 ### 2. Extensión del Texto vs Dificultad Léxica (Matplotlib)
-<img src="./graficos/relacion_dificultad_extension.png" width="700" alt="Relación Dificultad Extensión" />
+<img src="./graficos/relacion_dificultad_extension.png?raw=true" width="700" alt="Relación Dificultad Extensión" />
 
-*Archivo exportado:* [`graficos/relacion_dificultad_extension.png`](./graficos/relacion_dificultad_extension.png)
+*Archivo exportado:* [`graficos/relacion_dificultad_extension.png`](./graficos/relacion_dificultad_extension.png?raw=true)
 
 ---
 
 ### 3. Tiempos Estimados de Lectura por Categoría (Matplotlib)
-<img src="./graficos/distribucion_tiempos_categoria.png" width="700" alt="Distribución Tiempos Categoría" />
+<img src="./graficos/distribucion_tiempos_categoria.png?raw=true" width="700" alt="Distribución Tiempos Categoría" />
 
-*Archivo exportado:* [`graficos/distribucion_tiempos_categoria.png`](./graficos/distribucion_tiempos_categoria.png)
+*Archivo exportado:* [`graficos/distribucion_tiempos_categoria.png`](./graficos/distribucion_tiempos_categoria.png?raw=true)
 
 ---
 
 ### 4. Distribución de Velocidad de Lectura PPM (Seaborn)
-<img src="./graficos/seaborn_distribucion_ppm.png" width="700" alt="Seaborn Distribución PPM" />
+<img src="./graficos/seaborn_distribucion_ppm.png?raw=true" width="700" alt="Seaborn Distribución PPM" />
 
-*Archivo exportado:* [`graficos/seaborn_distribucion_ppm.png`](./graficos/seaborn_distribucion_ppm.png)
+*Archivo exportado:* [`graficos/seaborn_distribucion_ppm.png`](./graficos/seaborn_distribucion_ppm.png?raw=true)
 
 ---
 
 ### 5. Extensión de Palabras por Nivel CEFR (Seaborn Boxplot)
-<img src="./graficos/seaborn_palabras_por_cefr.png" width="700" alt="Seaborn Palabras por CEFR" />
+<img src="./graficos/seaborn_palabras_por_cefr.png?raw=true" width="700" alt="Seaborn Palabras por CEFR" />
 
-*Archivo exportado:* [`graficos/seaborn_palabras_por_cefr.png`](./graficos/seaborn_palabras_por_cefr.png)
+*Archivo exportado:* [`graficos/seaborn_palabras_por_cefr.png`](./graficos/seaborn_palabras_por_cefr.png?raw=true)
 
 ---
 
 ### 6. Dificultad Léxica vs Tiempo Estimado de Lectura (Seaborn Scatterplot)
-<img src="./graficos/seaborn_dificultad_vs_tiempo.png" width="700" alt="Seaborn Dificultad vs Tiempo" />
+<img src="./graficos/seaborn_dificultad_vs_tiempo.png?raw=true" width="700" alt="Seaborn Dificultad vs Tiempo" />
 
-*Archivo exportado:* [`graficos/seaborn_dificultad_vs_tiempo.png`](./graficos/seaborn_dificultad_vs_tiempo.png)
+*Archivo exportado:* [`graficos/seaborn_dificultad_vs_tiempo.png`](./graficos/seaborn_dificultad_vs_tiempo.png?raw=true)
 
 ---
 
