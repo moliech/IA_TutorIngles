@@ -21,6 +21,7 @@ El objetivo central es diagnosticar cuantitativamente el nivel de los textos par
 - 📄 **Informe Académico Completo (Primer Corte):** [Informe_Corte_1.md](Informe_Corte_1.md) | [informes/Informe_Corte_1.md](informes/Informe_Corte_1.md)
 - 📊 **Informe Dinámico Exportado por Código:** [informes/informe_proyecto.md](informes/informe_proyecto.md)
 - 📁 **Dataset Base Estandarizado (40 Lecturas):** [data/lecturas_ingles.csv](data/lecturas_ingles.csv)
+- 🤖 **Dataset Preparado para Machine Learning:** [data/lecturas_preparadas_ml.csv](data/lecturas_preparadas_ml.csv)
 - 🚀 **Orquestador Principal en Python:** [src/main.py](src/main.py)
 - 🖼️ **Directorio de Visualizaciones Exportadas:** [graficos/](graficos/)
 
@@ -32,21 +33,26 @@ El objetivo central es diagnosticar cuantitativamente el nivel de los textos par
 IA_TutorIngles/
 ├── Dockerfile                  # Empaquetado oficial en Python 3.12-slim
 ├── docker-compose.yml          # Configuración del servicio contenedorizado
-├── requirements.txt            # Dependencias del proyecto (numpy, pandas, matplotlib)
+├── requirements.txt            # Dependencias del proyecto (numpy, pandas, matplotlib, seaborn, etc.)
 ├── README.md                   # Documentación ejecutiva del repositorio
 ├── Informe_Corte_1.md          # Informe académico completo de primer corte
 ├── data/
-│   └── lecturas_ingles.csv     # Dataset estandarizado (40 lecturas en inglés)
+│   ├── lecturas_ingles.csv     # Dataset base estandarizado (40 lecturas)
+│   └── lecturas_preparadas_ml.csv # Dataset codificado con One-Hot Encoding listo para ML
 ├── src/                        # Arquitectura Modular en Python
-│   ├── cargar_datos.py         # Módulo 1: Ingesta de CSV y conversión a matrices NumPy
-│   ├── eda_numpy.py            # Módulo 2: Estadísticas descriptivas vectorizadas
+│   ├── cargar_datos.py         # Módulo 1: Ingesta de CSV y conversión a matrices
+│   ├── eda_numpy.py            # Módulo 2: Estadísticas descriptivas vectorizadas (NumPy)
 │   ├── visualizaciones.py      # Módulo 3: Generación de gráficos en Matplotlib
-│   ├── generar_informe.py      # Módulo 4: Exportación del informe dinámico en Markdown
+│   ├── preparacion_datos_pandas.py # Módulo 4: Análisis Pandas, Seaborn y One-Hot Encoding (Clase 8)
+│   ├── generar_informe.py      # Módulo 5: Exportación del informe dinámico en Markdown
 │   └── main.py                 # Orquestador central del sistema
 ├── graficos/                   # Visualizaciones exportadas en 300 DPI (.png)
 │   ├── distribucion_cefr_palabras.png
 │   ├── relacion_dificultad_extension.png
-│   └── distribucion_tiempos_categoria.png
+│   ├── distribucion_tiempos_categoria.png
+│   ├── seaborn_distribucion_ppm.png
+│   ├── seaborn_palabras_por_cefr.png
+│   └── seaborn_dificultad_vs_tiempo.png
 └── informes/                   # Carpeta de informes generados
     ├── Informe_Corte_1.md
     └── informe_proyecto.md
@@ -64,13 +70,33 @@ IA_TutorIngles/
 
 ---
 
+## 🛠️ Preparación de Datos y Análisis Avanzado con Seaborn (Clase 8)
+
+En el marco de la **Clase 8**, se incorporó el módulo [src/preparacion_datos_pandas.py](src/preparacion_datos_pandas.py) enfocado en la manipulación con **Pandas**, visualización estadística avanzada con **Seaborn** y preparación de variables para Machine Learning:
+
+1. **Manejo e Inspección de Valores Nulos:** Se verificó el dataset confirmando integridad total (0 valores nulos en 40 registros).
+2. **Columna Derivada Creada:** 
+   - `velocidad_lectura_ppm`: Mide la tasa de Palabras Por Minuto estimadas para cada lectura ($\text{PPM} = \frac{\text{conteo\_palabras}}{\text{tiempo\_lectura\_est\_min}}$).
+3. **Codificación Categórica (One-Hot Encoding):**
+   - Transformación de variables cualitativas `nivel_cefr` y `categoria` mediante `pd.get_dummies()`.
+   - Exportación de la matriz codificada resultante a [data/lecturas_preparadas_ml.csv](data/lecturas_preparadas_ml.csv).
+4. **Visualizaciones Estadísticas Avanzadas con Seaborn:**
+   - [graficos/seaborn_distribucion_ppm.png](graficos/seaborn_distribucion_ppm.png): Histograma con estimación de densidad de núcleo (KDE) de la velocidad PPM.
+   - [graficos/seaborn_palabras_por_cefr.png](graficos/seaborn_palabras_por_cefr.png): Diagrama de cajas (*Boxplot*) de extensión de palabras comparada por Nivel CEFR.
+   - [graficos/seaborn_dificultad_vs_tiempo.png](graficos/seaborn_dificultad_vs_tiempo.png): Diagrama de dispersión (*Scatterplot*) relacionando dificultad léxica y tiempo estimado por categoría temática.
+
+---
+
 ## 🖼️ Visualizaciones Estadísticas Exportadas
 
-El sistema genera automáticamente 3 gráficos analíticos en la carpeta `graficos/`:
+El sistema genera automáticamente 6 gráficos analíticos en la carpeta `graficos/`:
 
-1. [graficos/distribucion_cefr_palabras.png](graficos/distribucion_cefr_palabras.png): Gráfico de barras con el promedio de palabras por nivel CEFR.
-2. [graficos/relacion_dificultad_extension.png](graficos/relacion_dificultad_extension.png): Diagrama de dispersión (*Scatter Plot*) entre extensión y dificultad léxica.
-3. [graficos/distribucion_tiempos_categoria.png](graficos/distribucion_tiempos_categoria.png): Diagrama de cajas (*Boxplot*) de tiempos estimados de lectura por categoría.
+1. [graficos/distribucion_cefr_palabras.png](graficos/distribucion_cefr_palabras.png): Gráfico de barras con el promedio de palabras por nivel CEFR (Matplotlib).
+2. [graficos/relacion_dificultad_extension.png](graficos/relacion_dificultad_extension.png): Diagrama de dispersión entre extensión y dificultad léxica (Matplotlib).
+3. [graficos/distribucion_tiempos_categoria.png](graficos/distribucion_tiempos_categoria.png): Diagrama de cajas de tiempos estimados de lectura por categoría (Matplotlib).
+4. [graficos/seaborn_distribucion_ppm.png](graficos/seaborn_distribucion_ppm.png): Histograma y KDE de velocidad PPM (Seaborn).
+5. [graficos/seaborn_palabras_por_cefr.png](graficos/seaborn_palabras_por_cefr.png): Boxplot por nivel CEFR (Seaborn).
+6. [graficos/seaborn_dificultad_vs_tiempo.png](graficos/seaborn_dificultad_vs_tiempo.png): Scatterplot multivariado de dificultad vs tiempo (Seaborn).
 
 ---
 
