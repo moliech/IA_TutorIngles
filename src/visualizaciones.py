@@ -43,7 +43,7 @@ def generar_grafico_distribucion_tiempos(
     bp = plt.boxplot(
         datos_por_cat,
         patch_artist=True,
-        labels=categorias
+        tick_labels=categorias
     )
 
     colores = [

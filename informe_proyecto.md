@@ -22,8 +22,8 @@
 |---|---:|
 | Ciencia | 9 |
 | Tecnología | 8 |
-| Estilo de Vida | 6 |
 | Cotidiano | 6 |
+| Estilo de Vida | 6 |
 | Cultura | 6 |
 | Negocios | 5 |
 
