@@ -19,6 +19,7 @@ El objetivo central es diagnosticar cuantitativamente el nivel de los textos par
 ## 🔗 Accesos Directos a Archivos de Interés
 
 - 📄 **Informe Académico Completo (Primer Corte):** [Informe_Corte_1.md](Informe_Corte_1.md) | [informes/Informe_Corte_1.md](informes/Informe_Corte_1.md)
+- 🧠 **Informe de Reflexión sobre Neuronas Artificiales (Clase 8):** [informes/reflexion_aprendizaje_neurona.md](informes/reflexion_aprendizaje_neurona.md)
 - 📊 **Informe Dinámico Exportado por Código:** [informes/informe_proyecto.md](informes/informe_proyecto.md)
 - 📁 **Dataset Base Estandarizado (40 Lecturas):** [data/lecturas_ingles.csv](data/lecturas_ingles.csv)
 - 🤖 **Dataset Preparado para Machine Learning:** [data/lecturas_preparadas_ml.csv](data/lecturas_preparadas_ml.csv)
@@ -43,8 +44,10 @@ IA_TutorIngles/
 │   ├── cargar_datos.py         # Módulo 1: Ingesta de CSV y conversión a matrices
 │   ├── eda_numpy.py            # Módulo 2: Estadísticas descriptivas vectorizadas (NumPy)
 │   ├── visualizaciones.py      # Módulo 3: Generación de gráficos en Matplotlib
-│   ├── preparacion_datos_pandas.py # Módulo 4: Análisis Pandas, Seaborn y One-Hot Encoding (Clase 8)
+│   ├── preparacion_datos_pandas.py # Módulo 4: Análisis Pandas, Seaborn y One-Hot Encoding
 │   ├── generar_informe.py      # Módulo 5: Exportación del informe dinámico en Markdown
+│   ├── neuronas_compuertas.py  # Módulo 6: Perceptrón de Rosenblatt para Compuertas Lógicas y XOR (Clase 8)
+│   ├── clasificador_neurona_tutor.py # Módulo 7: Clasificador Neuronal Adaptativo de Lecturas (Clase 8)
 │   └── main.py                 # Orquestador central del sistema
 ├── graficos/                   # Visualizaciones exportadas en 300 DPI (.png)
 │   ├── distribucion_cefr_palabras.png
@@ -52,10 +55,13 @@ IA_TutorIngles/
 │   ├── distribucion_tiempos_categoria.png
 │   ├── seaborn_distribucion_ppm.png
 │   ├── seaborn_palabras_por_cefr.png
-│   └── seaborn_dificultad_vs_tiempo.png
+│   ├── seaborn_dificultad_vs_tiempo.png
+│   ├── fronteras_compuertas.png
+│   └── frontera_lecturas_tutor.png
 └── informes/                   # Carpeta de informes generados
     ├── Informe_Corte_1.md
-    └── informe_proyecto.md
+    ├── informe_proyecto.md
+    └── reflexion_aprendizaje_neurona.md
 ```
 
 ---
@@ -70,9 +76,9 @@ IA_TutorIngles/
 
 ---
 
-## 🛠️ Preparación de Datos y Análisis Avanzado con Seaborn (Clase 8)
+## 🛠️ Preparación de Datos y Análisis Avanzado con Seaborn
 
-En el marco de la **Clase 8**, se incorporó el módulo [src/preparacion_datos_pandas.py](src/preparacion_datos_pandas.py) enfocado en la manipulación con **Pandas**, visualización estadística avanzada con **Seaborn** y preparación de variables para Machine Learning:
+Se incorporó el módulo [src/preparacion_datos_pandas.py](src/preparacion_datos_pandas.py) enfocado en la manipulación con **Pandas**, visualización estadística avanzada con **Seaborn** y preparación de variables para Machine Learning:
 
 1. **Manejo e Inspección de Valores Nulos:** Se verificó el dataset confirmando integridad total (0 valores nulos en 40 registros).
 2. **Columna Derivada Creada:** 
@@ -87,9 +93,25 @@ En el marco de la **Clase 8**, se incorporó el módulo [src/preparacion_datos_p
 
 ---
 
-## 🖼️ Visualizaciones Estadísticas Exportadas
+## 🧠 Redes Neuronales Artificiales: Perceptrón y Clasificación Adaptativa (Clase 8)
 
-El sistema genera automáticamente 6 gráficos analíticos en la carpeta `graficos/`:
+En la sesión de **Redes Neuronales Artificiales (Clase 8)**, se diseñó e integró una arquitectura basada en el **Perceptrón Simple de Rosenblatt**:
+
+1. **Laboratorio de Compuertas Lógicas ([src/neuronas_compuertas.py](src/neuronas_compuertas.py)):**
+   - Implementación desde cero de la clase `Perceptron` con regla de aprendizaje supervisado y función de activación escalón unitario ($\Theta$).
+   - Convergencia demostrada sobre funciones linealmente separables (**AND, OR, NOT, NAND**).
+   - Demostración empírica de la no convergencia sobre la compuerta **XOR** (problema de separabilidad no lineal formulado por Minsky & Papert, 1969).
+2. **Clasificador Neuronal Adaptativo del Tutor ([src/clasificador_neurona_tutor.py](src/clasificador_neurona_tutor.py)):**
+   - Entrenamiento de una neurona artificial sobre el corpus de 40 lecturas de `data/lecturas_ingles.csv` utilizando características normalizadas (*Min-Max*): `conteo_palabras` y `dificultad_lexica`.
+   - Clasificación automática de lecturas en nivel **Básico (A1/A2 $\to 0$)** vs **Avanzado (B1/B2 $\to 1$)** alcanzando **100.0% de exactitud** en la época 4.
+3. **Reflexión Académica y Respuestas de la Guía:**
+   - Las respuestas detalladas a las 4 preguntas de reflexión sobre el aprendizaje neuronal (épocas de convergencia, tasa de aprendizaje, comparación AND vs OR y limitación en XOR) se encuentran documentadas en: 👉 **[informes/reflexion_aprendizaje_neurona.md](informes/reflexion_aprendizaje_neurona.md)**.
+
+---
+
+## 🖼️ Visualizaciones Estadísticas y Neuronales Exportadas
+
+El sistema genera automáticamente 8 gráficos analíticos en la carpeta `graficos/`:
 
 ### 1. Conteo Promedio de Palabras por Nivel CEFR (Matplotlib)
 <img src="./graficos/distribucion_cefr_palabras.png?raw=true" width="700" alt="Distribución CEFR Palabras" />
@@ -130,6 +152,20 @@ El sistema genera automáticamente 6 gráficos analíticos en la carpeta `grafic
 <img src="./graficos/seaborn_dificultad_vs_tiempo.png?raw=true" width="700" alt="Seaborn Dificultad vs Tiempo" />
 
 *Archivo exportado:* [`graficos/seaborn_dificultad_vs_tiempo.png`](./graficos/seaborn_dificultad_vs_tiempo.png?raw=true)
+
+---
+
+### 7. Fronteras de Decisión en Compuertas Lógicas y Fallo en XOR (Perceptrón)
+<img src="./graficos/fronteras_compuertas.png?raw=true" width="700" alt="Fronteras de Decisión Compuertas Lógicas" />
+
+*Archivo exportado:* [`graficos/fronteras_compuertas.png`](./graficos/fronteras_compuertas.png?raw=true)
+
+---
+
+### 8. Clasificación Adaptativa de Lecturas con Perceptrón Simple
+<img src="./graficos/frontera_lecturas_tutor.png?raw=true" width="700" alt="Frontera Neuronal de Lecturas" />
+
+*Archivo exportado:* [`graficos/frontera_lecturas_tutor.png`](./graficos/frontera_lecturas_tutor.png?raw=true)
 
 ---
 

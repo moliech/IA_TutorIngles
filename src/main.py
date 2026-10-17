@@ -8,6 +8,8 @@ from preparacion_datos_pandas import (
     generar_graficos_seaborn,
     preparar_datos_ml
 )
+from neuronas_compuertas import ejecutar_laboratorio_compuertas
+from clasificador_neurona_tutor import ejecutar_clasificador_tutor
 
 def main():
     print("=========================================================")
@@ -29,23 +31,19 @@ def main():
     print("\n[INFO] 3. Generando visualizaciones estadísticas (Matplotlib)...")
     generar_todas_las_visualizaciones(df)
 
-    generar_informe(
-        ruta_csv="data/lecturas_ingles.csv",
-        ruta_salida="informe_proyecto.md"
-    )
-    print(
-        "\n[INFO] 5. Ejecutando análisis con Pandas, "
-        "Seaborn y One-Hot Encoding (Clase 8)..."
-    )
+    print("\n[INFO] 4. Generando informe ejecutivo dinámico en Markdown...")
+    generar_informe(ruta_csv=ruta_csv, ruta_salida="informes/informe_proyecto.md")
 
-    df_limpio = explorar_y_limpiar_datos(
-        "data/lecturas_ingles.csv"
-    )
-
+    print("\n[INFO] 5. Ejecutando análisis con Pandas, Seaborn y One-Hot Encoding (Clase 8 - Parte 1)...")
+    df_limpio = explorar_y_limpiar_datos(ruta_csv)
     generar_graficos_seaborn(df_limpio)
+    preparar_datos_ml(df_limpio)
 
-    df_ml = preparar_datos_ml(df_limpio)
-    print("Analisis finalizado correctamente.")
+    print("\n[INFO] 6. Ejecutando Laboratorio de Compuertas Lógicas (Clase 8 - Parte 2)...")
+    ejecutar_laboratorio_compuertas()
+
+    print("\n[INFO] 7. Ejecutando Clasificador Neuronal Adaptativo del Tutor de Inglés...")
+    ejecutar_clasificador_tutor(ruta_csv)
 
     print("\n=========================================================")
     print("  [ÉXITO] Proceso finalizado correctamente sin errores.  ")

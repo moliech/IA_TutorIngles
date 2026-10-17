@@ -25,7 +25,7 @@ class Perceptron:
 
     def activacion_escalon(self, z: np.ndarray | float) -> np.ndarray | int:
         """Función de activación escalón unitario: 1 si z >= 0, sino 0."""
-        return np.where(z >= 0, 1, 0)
+        return np.where(np.round(z, 10) >= 0, 1, 0)
 
     def predecir(self, X: np.ndarray) -> np.ndarray:
         """Calcula la salida de la neurona: Theta(w · x + b)."""
@@ -35,7 +35,7 @@ class Perceptron:
     def entrenar(self, X: np.ndarray, y: np.ndarray) -> bool:
         """
         Aplica la regla de aprendizaje del perceptrón de Rosenblatt.
-        Retorna True si convergió con error 0; False si alcanzó epocas_max sin converger.
+        Retorna True si clasificó correctamente todas las entradas; False si alcanzó epocas_max sin converger.
         """
         self.pesos = np.zeros(self.num_entradas, dtype=float)
         self.sesgo = 0.0
@@ -47,13 +47,13 @@ class Perceptron:
                 prediccion = self.predecir(xi)
                 error = yi - prediccion
                 if error != 0:
-                    self.pesos += self.tasa_aprendizaje * error * xi
-                    self.sesgo += self.tasa_aprendizaje * error
+                    self.pesos = np.round(self.pesos + self.tasa_aprendizaje * error * xi, 10)
+                    self.sesgo = float(np.round(self.sesgo + self.tasa_aprendizaje * error, 10))
                     errores_epoca += abs(error)
 
             self.historial_errores.append(errores_epoca)
-            if errores_epoca == 0:
-                print(f"[{self.nombre}] Convergió con éxito en la época {epoca}. Pesos: {self.pesos}, Sesgo: {self.sesgo:.2f}")
+            if errores_epoca == 0 and np.array_equal(self.predecir(X), y):
+                print(f"[{self.nombre}] Clasificó correctamente todas las entradas en la época {epoca}. Pesos: {self.pesos}, Sesgo: {self.sesgo:.2f}")
                 return True
 
         print(f"[{self.nombre}] NO convergió tras {self.epocas_max} épocas. Error final: {errores_epoca}")
