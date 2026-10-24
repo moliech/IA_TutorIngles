@@ -1,3 +1,5 @@
+
+import os
 import pandas as pd
 from cargar_datos import cargar_lecturas
 from eda_numpy import calcular_estadisticas_numpy
@@ -6,19 +8,24 @@ from generar_informe import generar_informe
 from preparacion_datos_pandas import (
     explorar_y_limpiar_datos,
     generar_graficos_seaborn,
-    preparar_datos_ml
+    preparar_datos_ml,
 )
 from neuronas_compuertas import ejecutar_laboratorio_compuertas
 from clasificador_neurona_tutor import ejecutar_clasificador_tutor
+from perceptron_proyecto import ejecutar_perceptron_proyecto
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 def main():
     print("=========================================================")
     print("      SISTEMA IA TUTOR DE INGLÉS — EJECUCIÓN PRINCIPAL   ")
     print("=========================================================")
-    
-    ruta_csv = "data/lecturas_ingles.csv"
-    
-    print("\n[INFO] 1. Cargando dataset de lecturas...")
+
+    ruta_csv = os.path.join(BASE_DIR, "data", "lecturas_ingles.csv")
+    ruta_informe = os.path.join(BASE_DIR, "informes", "informe_proyecto.md")
+
+    print("\n[INFO] 1. Cargando dataset base de lecturas...")
     datos_completos, array_numerico = cargar_lecturas(ruta_csv)
     df = pd.DataFrame(datos_completos)
     print(f"       -> Se cargaron correctamente {len(df)} lecturas con 7 variables.")
@@ -32,22 +39,26 @@ def main():
     generar_todas_las_visualizaciones(df)
 
     print("\n[INFO] 4. Generando informe ejecutivo dinámico en Markdown...")
-    generar_informe(ruta_csv=ruta_csv, ruta_salida="informes/informe_proyecto.md")
+    generar_informe(ruta_csv=ruta_csv, ruta_salida=ruta_informe)
 
-    print("\n[INFO] 5. Ejecutando análisis con Pandas, Seaborn y One-Hot Encoding (Clase 8 - Parte 1)...")
+    print("\n[INFO] 5. Ejecutando preparación de datos con Pandas, Seaborn y One-Hot Encoding...")
     df_limpio = explorar_y_limpiar_datos(ruta_csv)
     generar_graficos_seaborn(df_limpio)
     preparar_datos_ml(df_limpio)
 
-    print("\n[INFO] 6. Ejecutando Laboratorio de Compuertas Lógicas (Clase 8 - Parte 2)...")
+    print("\n[INFO] 6. Ejecutando Laboratorio de Compuertas Lógicas...")
     ejecutar_laboratorio_compuertas()
 
-    print("\n[INFO] 7. Ejecutando Clasificador Neuronal Adaptativo del Tutor de Inglés...")
+    print("\n[INFO] 7. Ejecutando Clasificador con Función Escalón...")
     ejecutar_clasificador_tutor(ruta_csv)
+
+    print("\n[INFO] 8. Ejecutando Perceptrón con Sigmoide y Descenso del Gradiente...")
+    ejecutar_perceptron_proyecto()
 
     print("\n=========================================================")
     print("  [ÉXITO] Proceso finalizado correctamente sin errores.  ")
     print("=========================================================\n")
+
 
 if __name__ == "__main__":
     main()
