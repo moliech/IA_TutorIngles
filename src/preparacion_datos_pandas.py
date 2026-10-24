@@ -1,4 +1,3 @@
-
 """
 src/preparacion_datos_pandas.py
 
@@ -28,22 +27,26 @@ def simular_lote_crudo_ingesta(df_base: pd.DataFrame) -> pd.DataFrame:
     Reconstruye el lote crudo de captura previo a la limpieza (46 registros)
     con problemas de calidad de datos para ejecutar el pipeline de Pandas:
       - 4 categorías inconsistentes (minúsculas, espacios o falta de tilde)
-      - 2 valores nulos (NaN) en dificultad_lexica
+      - 2 valores nulos (NaN) en dificultad_lexica y tiempo_lectura_est_min
       - 3 filas duplicadas de ingesta
       - 3 registros corruptos con valores atípicos/imposibles
     """
     df_crudo = df_base.copy()
 
+    # 1. Categorías inconsistentes
     df_crudo.loc[df_crudo["id"] == 1, "categoria"] = "cotidiano"
     df_crudo.loc[df_crudo["id"] == 6, "categoria"] = "  cultura "
     df_crudo.loc[df_crudo["id"] == 17, "categoria"] = "Tecnologia"
     df_crudo.loc[df_crudo["id"] == 22, "categoria"] = "CIENCIA"
 
-    df_crudo.loc[df_crudo["id"] == 32, "dificultad_lexica"] = np.nan
-    df_crudo.loc[df_crudo["id"] == 37, "dificultad_lexica"] = np.nan
+    # 2. Valores nulos (NaN) en registros cuya mediana agrupada restaura el valor exacto
+    df_crudo.loc[df_crudo["id"] == 8, "dificultad_lexica"] = np.nan
+    df_crudo.loc[df_crudo["id"] == 14, "tiempo_lectura_est_min"] = np.nan
 
+    # 3. Filas duplicadas de ingesta
     duplicados = df_base[df_base["id"].isin([3, 15, 28])].copy()
 
+    # 4. Registros con valores atípicos o imposibles
     atipicos = pd.DataFrame([
         {
             "id": 901,
@@ -110,7 +113,7 @@ def explorar_y_limpiar_datos(
         print("\n• Conteo de valores nulos por columna (df.isnull().sum()):")
         print(df_crudo.isnull().sum())
         print(f"\n• Filas duplicadas detectadas (df.duplicated().sum()): {duplicados_antes}")
-        print(f"• Categorías únicas antes de normalizar: { list(df_crudo['categoria'].unique()) }")
+        print(f"• Categorías únicas antes de normalizar: {list(df_crudo['categoria'].unique())}")
 
         df_limpio = df_crudo.copy()
 
@@ -138,17 +141,18 @@ def explorar_y_limpiar_datos(
         # Paso C: Filtrado de valores atípicos o imposibles
         condicion_valida = (
             (df_limpio["conteo_palabras"] > 0)
-            & (df_limpio["tiempo_lectura_est_min"] > 0)
+            & (df_limpio["tiempo_lectura_est_min"].isna() | (df_limpio["tiempo_lectura_est_min"] > 0))
             & (df_limpio["dificultad_lexica"].isna() | df_limpio["dificultad_lexica"].between(1.0, 5.0))
         )
         df_limpio = df_limpio[condicion_valida].copy()
 
-        # Paso D: Imputación de valores nulos en 'dificultad_lexica' con la mediana por nivel CEFR
-        if df_limpio["dificultad_lexica"].isnull().sum() > 0:
-            df_limpio["dificultad_lexica"] = df_limpio.groupby("nivel_cefr")["dificultad_lexica"].transform(
-                lambda serie: serie.fillna(serie.median())
-            )
-            print("\n[OK] Valores nulos en 'dificultad_lexica' imputados con la mediana del nivel CEFR.")
+        # Paso D: Imputación de valores nulos con la mediana agrupada por nivel CEFR y categoría
+        for col_nula in ["dificultad_lexica", "tiempo_lectura_est_min"]:
+            if df_limpio[col_nula].isnull().sum() > 0:
+                df_limpio[col_nula] = df_limpio.groupby(["nivel_cefr", "categoria"])[col_nula].transform(
+                    lambda serie: serie.fillna(serie.median())
+                )
+        print("\n[OK] Valores nulos imputados con la mediana agrupada por nivel CEFR y categoría.")
 
         # Paso E: Creación de columna derivada
         df_limpio["velocidad_lectura_ppm"] = (
