@@ -8,5 +8,8 @@ services:
       - ./graficos:/app/graficos
       - ./informes:/app/informes
       - ./notebooks:/app/notebooks
+      - ./.streamlit:/app/.streamlit
+    ports:
+      - "8501:8501"
     working_dir: /app
     command: tail -f /dev/null
