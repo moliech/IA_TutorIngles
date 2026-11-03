@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 from cargar_datos import cargar_lecturas
@@ -13,6 +12,7 @@ from preparacion_datos_pandas import (
 from neuronas_compuertas import ejecutar_laboratorio_compuertas
 from clasificador_neurona_tutor import ejecutar_clasificador_tutor
 from perceptron_proyecto import ejecutar_perceptron_proyecto
+from modelo_proyecto import ejecutar_entrenamiento_comparativo
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -54,6 +54,9 @@ def main():
 
     print("\n[INFO] 8. Ejecutando Perceptrón con Sigmoide y Descenso del Gradiente...")
     ejecutar_perceptron_proyecto()
+
+    print("\n[INFO] 9. Ejecutando Modelamiento Predictivo con Scikit-Learn (Clase 12)...")
+    ejecutar_entrenamiento_comparativo()
 
     print("\n=========================================================")
     print("  [ÉXITO] Proceso finalizado correctamente sin errores.  ")
