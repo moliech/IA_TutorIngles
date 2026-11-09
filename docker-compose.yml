@@ -13,4 +13,4 @@ services:
     ports:
       - "8501:8501"
     working_dir: /app
-    command: tail -f /dev/null
+    command: streamlit run src/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true

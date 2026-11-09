@@ -129,3 +129,46 @@ def generar_resumen_espanol(titulo: str, texto: str) -> str:
         "para que el estudiante entienda el contexto general antes de leer en inglés."
     )
     return consultar_gemini(prompt, system_instruction=system_prompt)
+
+def traducir_texto_espanol(titulo: str, texto: str) -> str:
+    """Traduce fielmente el texto de lectura en inglés al español para apoyo pedagógico del estudiante."""
+    system_prompt = (
+        "Eres un traductor y docente bilingüe experto en inglés y español. Tu tarea es traducir "
+        "con total precisión, naturalidad y fluidez el texto en inglés al español latinoamericano, "
+        "respetando los párrafos originales para que un estudiante pueda cotejar ambas versiones."
+    )
+    prompt = (
+        f"Traduce al español la siguiente lectura en inglés titulada '{titulo}':\n\n"
+        f"\"\"\"{texto}\"\"\"\n\n"
+        "Entrega exclusivamente la traducción directa al español, sin encabezados, sin notas del traductor ni preámbulos."
+    )
+    return consultar_gemini(prompt, system_instruction=system_prompt)
+
+def obtener_traduccion_con_cache(id_lectura: int, titulo: str, texto_ingles: str) -> str:
+    """Busca la traducción en disco (data/traducciones_espanol.json) o la genera con Gemini y la cachea."""
+    ruta_json = os.path.join(os.path.dirname(__file__), "..", "data", "traducciones_espanol.json")
+    traducciones = {}
+    if os.path.exists(ruta_json):
+        try:
+            with open(ruta_json, "r", encoding="utf-8") as f:
+                traducciones = json.load(f)
+        except Exception:
+            traducciones = {}
+
+    id_str = str(id_lectura)
+    if id_str in traducciones and traducciones[id_str].strip():
+        return traducciones[id_str]
+
+    if not hay_ia_generativa_disponible():
+        return "⚠️ Traducción no disponible (servicio de IA generativa no configurado)."
+
+    trad = traducir_texto_espanol(titulo, texto_ingles)
+    if trad and not trad.startswith("Error") and not trad.startswith("⚠️"):
+        traducciones[id_str] = trad
+        try:
+            os.makedirs(os.path.dirname(ruta_json), exist_ok=True)
+            with open(ruta_json, "w", encoding="utf-8") as f:
+                json.dump(traducciones, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+    return trad

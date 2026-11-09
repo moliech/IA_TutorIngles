@@ -19,6 +19,7 @@ from gemini_tutor import (
     explicar_prediccion_ia,
     responder_duda_estudiante,
     generar_resumen_espanol,
+    obtener_traduccion_con_cache,
 )
 
 st.set_page_config(
@@ -27,7 +28,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Inyección de estilos y tokens visuales ergonómicos (Google Fonts Lexend)
+# Inyección de estilos y tokens visuales ergonómicos y educativos
 aplicar_tema_lexia()
 
 # ------------------ CARGA DE DATOS ------------------
@@ -39,6 +40,30 @@ def cargar_catalogo():
     return pd.read_csv(ruta)
 
 df_lecturas = cargar_catalogo()
+
+# ------------------ HELPER PEDAGÓGICO ------------------
+def obtener_mision_pedagogica(nivel_cefr: str) -> str:
+    """Devuelve una orientación didáctica y motivadora según el nivel del estudiante."""
+    if nivel_cefr == "A1":
+        return (
+            "Identifica las acciones cotidianas y el vocabulario familiar. "
+            "No te preocupes por entender cada palabra aislada; concéntrate en captar la idea principal y los personajes."
+        )
+    elif nivel_cefr == "A2":
+        return (
+            "Presta atención a los conectores de tiempo (before, after, then) y a las descripciones. "
+            "Usa la pestaña en español para cotejar las frases completas si tienes dudas."
+        )
+    elif nivel_cefr == "B1":
+        return (
+            "Descubre las causas, efectos y opiniones en el texto. "
+            "Anota los adjetivos y términos técnicos nuevos preguntándole a tu tutor interactivo."
+        )
+    else:
+        return (
+            "Analiza la estructura argumentativa y los términos especializados. "
+            "Intenta responder las preguntas de comprensión del tutor directamente en inglés para reforzar tu fluidez."
+        )
 
 # ------------------ ANALIZADOR DE TEXTO LIBRE ------------------
 def estimar_metricas_texto(texto: str):
@@ -62,9 +87,15 @@ def estimar_metricas_texto(texto: str):
     ppm = round(n / tiempo, 1)
     return n, dificultad, tiempo, ppm
 
-# ------------------ ENCABEZADO ------------------
-st.markdown("<h1 style='color:#0F2942; margin-bottom:0;'>LexiaAdapt</h1>", unsafe_allow_html=True)
-st.caption("Tutor Inteligente de Lectura Adaptativa en Inglés • Cartago, Valle del Cauca")
+# ------------------ ENCABEZADO MODERNO Y EDUCATIVO ------------------
+st.markdown(
+    """<div class="lex-banner">
+    <h1>📖 LexiaAdapt</h1>
+    <p>Plataforma Inteligente de Lectura Adaptativa e Inferencia Lingüística</p>
+    <span class="sub-tag">🎓 Cartago, Valle del Cauca • Inteligencia Artificial 2026-02</span>
+</div>""",
+    unsafe_allow_html=True
+)
 
 modo = st.radio(
     "Seleccione el Modo de Operación:",
@@ -72,14 +103,14 @@ modo = st.radio(
     horizontal=True
 )
 
-st.divider()
+st.write("")
 
 # =========================================================================
-# VISTA 1: MODO ESTUDIANTE (LECTURA GUIADA Y ASISTENCIA INTERACTIVA)
+# VISTA 1: MODO ESTUDIANTE (LECTURA GUIADA, TRADUCCIÓN NATIVA Y TUTOR IA)
 # =========================================================================
 if "Modo Estudiante" in modo:
-    st.subheader("📚 Biblioteca de Lecturas Graduadas")
-    st.write("Seleccione el área temática y el texto para iniciar su sesión de lectura:")
+    st.markdown("<h3 style='font-size:1.6rem; font-weight:800; color:#0F2942; margin-bottom:0.2rem;'>📚 Biblioteca de Lecturas Graduadas</h3>", unsafe_allow_html=True)
+    st.markdown("<p class='section-subtitle'>Selecciona el área temática y la lectura que deseas practicar hoy:</p>", unsafe_allow_html=True)
 
     c_f1, c_f2 = st.columns([1, 2])
     with c_f1:
@@ -90,90 +121,185 @@ if "Modo Estudiante" in modo:
 
     with c_f2:
         titulos = df_filtrado["titulo"].tolist()
-        titulo_sel = st.selectbox("Seleccione la Lectura:", titulos)
+        titulo_sel = st.selectbox(
+            "Seleccione la Lectura:",
+            options=titulos,
+            index=None,
+            placeholder="👉 Elige una lectura de la lista...",
+            key="select_lectura_estudiante"
+        )
 
-    fila = df_filtrado[df_filtrado["titulo"] == titulo_sel].iloc[0]
-
-    # Controles de accesibilidad del texto
-    tam_fuente = st.slider("Tamaño de Fuente para Lectura:", min_value=16, max_value=24, value=18, step=1)
-
-    st.write("")
-    col_lectura, col_metricas = st.columns([2, 1], gap="large")
-
-    with col_lectura:
-        st.markdown(f"### {fila['titulo']}")
-        st.markdown(render_badge(fila["nivel_cefr"]), unsafe_allow_html=True)
-        st.write("")
-
-        texto_mostrar = fila.get("texto_ingles", "Texto en proceso de carga.")
+    # ESTADO INICIAL: PANTALLA LIMPIA DE BIENVENIDA DIDÁCTICA (SI NO HA SELECCIONADO LECTURA)
+    if titulo_sel is None:
         st.markdown(
-            f"""
-            <div class="reading-container">
-                <p class="reading-body" style="font-size:{tam_fuente}px !important;">{texto_mostrar}</p>
-            </div>
-            """,
+            """<div style="background:#FFFFFF; border:2px dashed #CBD5E1; border-radius:20px; padding:3.5rem 2rem; text-align:center; margin-top:1.5rem;">
+    <div style="font-size:3.5rem; margin-bottom:1rem;">📚✨</div>
+    <h2 style="color:#0F2942; font-weight:800; margin-bottom:0.6rem;">¡Bienvenido a tu Espacio de Lectura Adaptativa!</h2>
+    <p style="font-size:1.15rem; color:#475569; max-width:650px; margin:0 auto 2.2rem auto; line-height:1.6;">
+        Elige un área temática y selecciona la lectura que deseas practicar en el menú superior para desplegar el texto en inglés, su traducción y el tutor virtual.
+    </p>
+    <div style="display:flex; justify-content:center; gap:1.5rem; flex-wrap:wrap;">
+        <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:14px; padding:1.2rem 1.5rem; text-align:left; max-width:240px;">
+            <span style="font-size:1.6rem;">🇬🇧</span>
+            <h4 style="color:#1E3A8A; margin:0.4rem 0 0.2rem 0; font-weight:700;">40 Lecturas Reales</h4>
+            <p style="font-size:0.9rem; color:#2563EB; margin:0;">Graduadas por dificultad desde A1 hasta B2.</p>
+        </div>
+        <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:14px; padding:1.2rem 1.5rem; text-align:left; max-width:240px;">
+            <span style="font-size:1.6rem;">🇪🇸</span>
+            <h4 style="color:#065F46; margin:0.4rem 0 0.2rem 0; font-weight:700;">Traducción al Español</h4>
+            <p style="font-size:0.9rem; color:#10B981; margin:0;">Pestaña bilingüe para cotejo inmediato.</p>
+        </div>
+        <div style="background:#FAF5FF; border:1px solid #E9D5FF; border-radius:14px; padding:1.2rem 1.5rem; text-align:left; max-width:240px;">
+            <span style="font-size:1.6rem;">💬</span>
+            <h4 style="color:#581C87; margin:0.4rem 0 0.2rem 0; font-weight:700;">Tutor Virtual IA</h4>
+            <p style="font-size:0.9rem; color:#8B5CF6; margin:0;">Resuelve tus preguntas de vocabulario y gramática.</p>
+        </div>
+    </div>
+</div>""",
             unsafe_allow_html=True
         )
 
+    else:
+        # LECTURA SELECCIONADA: MOSTRAR TEXTO, TRADUCCIÓN Y TUTOR
+        fila = df_filtrado[df_filtrado["titulo"] == titulo_sel].iloc[0]
+        texto_ingles = fila.get("texto_ingles", "Texto en proceso de carga.")
+
         st.write("")
-        # --- APOYO PEDAGÓGICO: RESUMEN GUIADO EN ESPAÑOL ---
-        clave_resumen = f"resumen_{fila['id']}"
-        with st.expander("💡 ¿No entendiste la idea general? Ver Resumen en Español"):
-            if st.button("Generar Resumen Guiado", key="btn_resumen"):
-                with st.spinner("El tutor está extrayendo los puntos clave..."):
-                    resumen = generar_resumen_espanol(fila["titulo"], texto_mostrar)
-                    st.session_state[clave_resumen] = resumen
-            
-            if clave_resumen in st.session_state:
-                st.markdown(st.session_state[clave_resumen])
+        c_tit1, c_tit2 = st.columns([2, 1])
+        with c_tit1:
+            st.markdown(f"### {fila['titulo']}")
+            st.markdown(render_badge(fila["nivel_cefr"]), unsafe_allow_html=True)
+        with c_tit2:
+            tam_opcion = st.radio(
+                "🔠 Tamaño del texto:",
+                ["Normal (18px)", "Grande (22px)", "Muy Grande (28px)"],
+                index=1,
+                horizontal=True,
+                key=f"tam_radio_{fila['id']}"
+            )
+            tam_px = 18 if "18px" in tam_opcion else (28 if "28px" in tam_opcion else 22)
 
-        # --- ASISTENTE INTERACTIVO / CHAT CON EL TUTOR IA ---
-        st.markdown("#### 💬 Pregúntale a tu Tutor IA sobre este texto")
-        st.caption("Escribe tus dudas sobre palabras difíciles, ideas principales o gramática de esta lectura.")
+        st.write("")
+        col_lectura, col_metricas = st.columns([2, 1], gap="large")
 
-        # Botones de preguntas rápidas sugeridas
-        b1, b2, b3 = st.columns(3)
-        prompt_rapido = None
-        if b1.button("🔑 ¿3 palabras clave y significado?", use_container_width=True):
-            prompt_rapido = "¿Cuáles son las 3 palabras más importantes o difíciles de este texto y qué significan en español?"
-        if b2.button("📝 Explícame la idea en 2 frases", use_container_width=True):
-            prompt_rapido = "Explícame de forma muy sencilla en dos frases en español de qué trata este texto."
-        if b3.button("❓ Hazme una pregunta de comprensión", use_container_width=True):
-            prompt_rapido = "Hazme una pregunta sencilla en inglés sobre este texto para ver si lo comprendí."
+        with col_lectura:
+            # PESTAÑAS NATIVAS: INGLÉS Y ESPAÑOL (SIN TARJETAS NI BOTONES RAROS)
+            tab_en, tab_es = st.tabs(["🇬🇧 Lectura en Inglés", "🇪🇸 Traducción al Español"])
 
-        # Estado de sesión para el historial del chat
-        clave_chat = f"chat_{fila['id']}"
-        if clave_chat not in st.session_state:
-            st.session_state[clave_chat] = []
+            with tab_en:
+                st.markdown(
+                    f"""<div style="font-family:'Lexend',sans-serif; font-size:{tam_px}px; line-height:1.9; color:#0F172A; background:#FFFFFF; padding:2rem 2.2rem; border-radius:16px; border:2px solid #E2E8F0; border-left:8px solid #2563EB; box-shadow:0 4px 15px rgba(0,0,0,0.04); margin-top:0.8rem;">
+    {texto_ingles}
+</div>""",
+                    unsafe_allow_html=True
+                )
 
-        # Mostrar historial
-        for msj in st.session_state[clave_chat]:
-            with st.chat_message(msj["rol"]):
-                st.write(msj["texto"])
+            with tab_es:
+                clave_trad = f"trad_{fila['id']}"
+                if clave_trad not in st.session_state:
+                    with st.spinner("Cargando traducción al español..."):
+                        st.session_state[clave_trad] = obtener_traduccion_con_cache(
+                            int(fila["id"]), fila["titulo"], texto_ingles
+                        )
+                traduccion = st.session_state[clave_trad]
+                st.markdown(
+                    f"""<div style="font-family:'Lexend',sans-serif; font-size:{tam_px}px; line-height:1.9; color:#064E3B; background:#F8FCF9; padding:2rem 2.2rem; border-radius:16px; border:2px solid #BBF7D0; border-left:8px solid #10B981; box-shadow:0 4px 15px rgba(0,0,0,0.04); margin-top:0.8rem;">
+    {traduccion}
+</div>""",
+                    unsafe_allow_html=True
+                )
 
-        # Input de chat
-        input_usuario = st.chat_input("Escribe tu pregunta sobre la lectura...")
-        pregunta_final = prompt_rapido or input_usuario
+            st.write("")
+            # --- APOYO PEDAGÓGICO: RESUMEN GUIADO EN ESPAÑOL ---
+            clave_resumen = f"resumen_{fila['id']}"
+            with st.expander("💡 ¿No entendiste la idea general? Ver Resumen en 3 Puntos Clave"):
+                if st.button("Generar Resumen Guiado", key="btn_resumen"):
+                    with st.spinner("El tutor está extrayendo los puntos clave..."):
+                        resumen = generar_resumen_espanol(fila["titulo"], texto_ingles)
+                        st.session_state[clave_resumen] = resumen
 
-        if pregunta_final:
-            st.session_state[clave_chat].append({"rol": "user", "texto": pregunta_final})
-            with st.chat_message("user"):
-                st.write(pregunta_final)
+                if clave_resumen in st.session_state:
+                    st.markdown(st.session_state[clave_resumen])
 
-            with st.chat_message("assistant"):
+            st.write("")
+            # --- ASISTENTE INTERACTIVO / CHAT CON EL TUTOR IA ---
+            st.markdown("#### 💬 Asistente Interactivo (LexiaTutor)")
+            st.caption("Resuelve tus dudas sobre vocabulario, pronunciación, gramática o comprensión de este texto:")
+
+            clave_chat = f"chat_{fila['id']}"
+            if clave_chat not in st.session_state:
+                st.session_state[clave_chat] = []
+
+            # Botones de preguntas rápidas sugeridas
+            c_q1, c_q2, c_q3 = st.columns(3)
+            prompt_rapido = None
+            if c_q1.button("🔑 ¿3 palabras clave y significado?", use_container_width=True, key=f"q1_{fila['id']}"):
+                prompt_rapido = "¿Cuáles son las 3 palabras más importantes o difíciles de este texto y qué significan en español?"
+            if c_q2.button("📝 Explícame la idea en 2 frases", use_container_width=True, key=f"q2_{fila['id']}"):
+                prompt_rapido = "Explícame de forma muy sencilla en dos frases en español de qué trata este texto."
+            if c_q3.button("❓ Hazme una pregunta de comprensión", use_container_width=True, key=f"q3_{fila['id']}"):
+                prompt_rapido = "Hazme una pregunta sencilla en inglés sobre este texto para ver si lo comprendí."
+
+            # Procesar prompt rápido si fue pulsado
+            if prompt_rapido:
+                st.session_state[clave_chat].append({"rol": "user", "texto": prompt_rapido})
                 with st.spinner("LexiaTutor está pensando..."):
-                    respuesta = responder_duda_estudiante(pregunta_final, fila["titulo"], texto_mostrar)
-                    st.write(respuesta)
-                    st.session_state[clave_chat].append({"rol": "assistant", "texto": respuesta})
+                    resp = responder_duda_estudiante(prompt_rapido, fila["titulo"], texto_ingles)
+                    st.session_state[clave_chat].append({"rol": "assistant", "texto": resp})
+                st.rerun()
 
-    with col_metricas:
-        st.markdown("#### Métricas Lingüísticas")
-        st.metric("Conteo de Palabras", f"{fila['conteo_palabras']} palabras")
-        st.metric("Dificultad Léxica", f"{fila['dificultad_lexica']} / 5.0")
-        st.metric("Tiempo Estimado", f"{fila['tiempo_lectura_est_min']} min")
-        st.metric("Velocidad Promedio", f"{fila['velocidad_lectura_ppm']} PPM")
+            # Contenedor visual de mensajes del chat con scroll
+            chat_container = st.container(height=340)
+            with chat_container:
+                if not st.session_state[clave_chat]:
+                    st.info("👋 ¡Hola! Soy LexiaTutor. Escribe una pregunta abajo o pulsa uno de los botones de arriba para empezar.")
+                for msj in st.session_state[clave_chat]:
+                    with st.chat_message(msj["rol"]):
+                        st.markdown(msj["texto"])
 
-        st.info("🎯 **Calibración CEFR:** Este texto ha sido graduado para que el vocabulario y la sintaxis se ajusten a las capacidades de lectura progresiva de estudiantes del Valle del Cauca.")
+            # Input de chat SIEMPRE posicionado al final (abajo)
+            if prompt_input := st.chat_input("Escribe tu pregunta sobre la lectura aquí..."):
+                st.session_state[clave_chat].append({"rol": "user", "texto": prompt_input})
+                with st.spinner("LexiaTutor está pensando..."):
+                    resp = responder_duda_estudiante(prompt_input, fila["titulo"], texto_ingles)
+                    st.session_state[clave_chat].append({"rol": "assistant", "texto": resp})
+                st.rerun()
+
+        with col_metricas:
+            st.markdown("#### 📊 Información de Lectura")
+
+            st.markdown(
+                f"""<div class="metric-card-edu">
+    <div class="title">⏱️ Tiempo Estimado de Lectura</div>
+    <div class="val">~{fila['tiempo_lectura_est_min']} minutos</div>
+</div>
+<div class="metric-card-edu">
+    <div class="title">📄 Extensión del Texto</div>
+    <div class="val">{fila['conteo_palabras']} palabras</div>
+</div>
+<div class="metric-card-edu">
+    <div class="title">🎯 Nivel Sugerido</div>
+    <div class="val">{fila['nivel_cefr']} ({'Básico' if fila['nivel_cefr'] in ['A1', 'A2'] else 'Intermedio/Avanzado'})</div>
+</div>
+<div class="metric-card-edu">
+    <div class="title">🌟 Complejidad Léxica</div>
+    <div class="val">{fila['dificultad_lexica']} / 5.0</div>
+</div>""",
+                unsafe_allow_html=True
+            )
+
+            dif_val = float(fila['dificultad_lexica']) / 5.0
+            st.caption("Progreso de Complejidad:")
+            st.progress(min(1.0, max(0.1, dif_val)))
+
+            mision_txt = obtener_mision_pedagogica(fila['nivel_cefr'])
+            st.markdown(
+                f"""<div class="pedagogical-box">
+    <h5>🎯 Meta de Aprendizaje</h5>
+    <p>{mision_txt}</p>
+</div>""",
+                unsafe_allow_html=True
+            )
 
 # =========================================================================
 # VISTA 2: MODO AUDITORÍA IA (SIMULADOR EN VIVO CON TEXTO LIBRE Y SCIKIT-LEARN)
@@ -298,15 +424,13 @@ else:
                             analisis["dificultad"],
                             res["confianza"]
                         )
-                
+
                 if analisis.get("explicacion"):
                     st.markdown(
-                        f"""
-                        <div style="background:#F1EFEA; border-left:4px solid #0F766E; padding:1.2rem; border-radius:0 10px 10px 0; margin-top:1rem;">
-                            <strong>Explicación Generada por IA:</strong><br><br>
-                            {analisis['explicacion']}
-                        </div>
-                        """,
+                        f"""<div style="background:#F1EFEA; border-left:4px solid #0F766E; padding:1.2rem; border-radius:0 10px 10px 0; margin-top:1rem;">
+    <strong>Explicación Generada por IA:</strong><br><br>
+    {analisis['explicacion']}
+</div>""",
                         unsafe_allow_html=True
                     )
             else:
