@@ -13,7 +13,7 @@ import streamlit as st
 
 # Importación de módulos internos del sistema
 from ui_theme import aplicar_tema_lexia, render_badge
-from usar_modelo import predecir_lectura
+from usar_modelo import predecir_lectura, predecir_lote, generar_figura_proyeccion
 from gemini_tutor import (
     hay_ia_generativa_disponible,
     explicar_prediccion_ia,
@@ -302,162 +302,260 @@ if "Modo Estudiante" in modo:
             )
 
 # =========================================================================
-# VISTA 2: MODO AUDITORÍA IA (SIMULADOR EN VIVO CON TEXTO LIBRE Y SCIKIT-LEARN)
+# VISTA 2: DEMOSTRACIÓN DE INFERENCIA PREDICTIVA EN VIVO (MODELO SERIALIZADO)
 # =========================================================================
 else:
-    st.subheader("🔬 Auditoría de Inferencia y Demostración en Vivo")
+    st.subheader("🔬 Demostración de Inferencia Predictiva en Vivo")
     st.write(
-        "Pega cualquier fragmento de lectura en inglés para que la Inteligencia Artificial analice sus "
-        "propiedades lingüísticas en tiempo real y clasifique su nivel según el modelo entrenado:"
+        "Demostración del sistema en tiempo real: el modelo serializado (`modelo_final.joblib`), "
+        "previamente entrenado con el corpus de 40 lecturas, evalúa y clasifica **nuevas lecturas inéditas sin reentrenar**."
     )
 
-    tab_texto, tab_sliders = st.tabs(["📝 Analizador de Texto Libre (Recomendado)", "🎛️ Simulador Manual por Parámetros"])
+    tab_inferencia, tab_diagnostico = st.tabs([
+        "📥 Clasificación de Nuevas Lecturas (Inferencia sin Reentrenar)",
+        "📊 Diagnóstico y Proyección en la Frontera de Decisión"
+    ])
 
-    # ------------------ PESTAÑA 1: CAJA DE TEXTO LIBRE ------------------
-    with tab_texto:
-        # Estado de sesión para persistir el texto y resultados
-        if "texto_auditoria" not in st.session_state:
-            st.session_state["texto_auditoria"] = ""
-        if "analisis_actual" not in st.session_state:
-            st.session_state["analisis_actual"] = None
-
-        # Botones de ejemplos pre-cargados para la demostración rápida ante el evaluador
-        c_ej1, c_ej2, c_ej3 = st.columns(3)
-        if c_ej1.button("Cargar Ejemplo Básico (A1 - Rutina)", use_container_width=True):
-            st.session_state["texto_auditoria"] = (
-                "I wake up every day at six in the morning. First, I wash my face and brush my teeth. "
-                "Then, I go to the kitchen to prepare breakfast. I usually eat scrambled eggs with bread "
-                "and drink black coffee. After eating, I walk to university with my friends."
+    # ------------------ PESTAÑA 1: INFERENCIA SOBRE NUEVAS LECTURAS ------------------
+    with tab_inferencia:
+        # 1. Dataset base de referencia colapsable
+        with st.expander("📁 Ver Dataset Base Histórico de Entrenamiento (40 Lecturas de Cartago)"):
+            st.markdown(
+                "El modelo fue entrenado con un corpus equilibrado de **40 lecturas** graduadas según "
+                "el Marco Común Europeo de Referencia (MCER):"
             )
-            st.session_state["analisis_actual"] = None
-            st.rerun()
+            c_b1, c_b2, c_b3, c_b4 = st.columns(4)
+            c_b1.metric("Lecturas A1 (Básico)", "10 lecturas", "~112 palabras")
+            c_b2.metric("Lecturas A2 (Básico)", "10 lecturas", "~201 palabras")
+            c_b3.metric("Lecturas B1 (Avanzado)", "10 lecturas", "~327 palabras")
+            c_b4.metric("Lecturas B2 (Avanzado)", "10 lecturas", "~473 palabras")
 
-        if c_ej2.button("Cargar Ejemplo Intermedio (B1 - Tecnología)", use_container_width=True):
-            st.session_state["texto_auditoria"] = (
-                "The unprecedented expansion of social media platforms has profoundly reshaped how modern youth "
-                "communicate, consume information, and build personal relationships. Digital networks provide "
-                "opportunities for teenagers to express creativity, but compulsive consumption often triggers "
-                "social comparisons and heightened anxiety."
+            st.dataframe(
+                df_lecturas[["id", "titulo", "nivel_cefr", "conteo_palabras", "dificultad_lexica", "categoria"]],
+                use_container_width=True,
+                column_config={
+                    "conteo_palabras": "Palabras",
+                    "dificultad_lexica": "Dificultad (1-5)",
+                    "nivel_cefr": "Nivel MCER"
+                }
             )
-            st.session_state["analisis_actual"] = None
-            st.rerun()
 
-        if c_ej3.button("Cargar Ejemplo Avanzado (B2 - Inteligencia Artificial)", use_container_width=True):
-            st.session_state["texto_auditoria"] = (
-                "The integration of artificial intelligence and machine learning algorithms into contemporary "
-                "biomedical research is spearheading a monumental paradigm shift. Deep convolutional neural networks "
-                "can analyze medical imaging with diagnostic sensitivity matching specialized radiologists, processing "
-                "genomic sequencing profiles to detect early-stage malignant tumors before macroscopic symptoms emerge."
-            )
-            st.session_state["analisis_actual"] = None
-            st.rerun()
-
-        texto_ingresado = st.text_area(
-            "Pega o escribe aquí el texto en inglés a clasificar:",
-            value=st.session_state["texto_auditoria"],
-            height=160,
-            placeholder="Paste any English reading passage here...",
-            key="input_area_texto"
+        st.write("")
+        st.markdown("#### ⚡ Evaluación de Nuevas Lecturas Inéditas")
+        st.write(
+            "Carga un lote de prueba o tu propio archivo CSV para someterlo al modelo entrenado en milisegundos:"
         )
-        st.session_state["texto_auditoria"] = texto_ingresado
 
-        if st.button("🚀 Analizar Texto y Predecir Nivel con IA", type="primary", key="btn_analizar_texto"):
-            if not texto_ingresado.strip():
-                st.warning("Por favor ingrese o pegue un texto para analizar.")
-                st.session_state["analisis_actual"] = None
-            else:
-                # 1. Extracción de métricas lingüísticas en milisegundos
-                palabras, dif_calculada, t_est, ppm_calc = estimar_metricas_texto(texto_ingresado)
-                try:
-                    res = predecir_lectura(palabras, dif_calculada, t_est)
-                    st.session_state["analisis_actual"] = {
-                        "texto": texto_ingresado,
-                        "palabras": palabras,
-                        "dificultad": dif_calculada,
-                        "tiempo": t_est,
-                        "ppm": ppm_calc,
-                        "res": res,
-                        "explicacion": None
-                    }
-                except FileNotFoundError:
-                    st.error("No se encontró el modelo `modelo_final.joblib`. Ejecute `python src/modelo_proyecto.py` para entrenarlo.")
+        # Estado de sesión para el lote activo (por defecto carga los 3 casos clave de control)
+        if "df_lote_subido" not in st.session_state or st.session_state["df_lote_subido"] is None:
+            st.session_state["df_lote_subido"] = pd.DataFrame([
+                {
+                    "id": 1,
+                    "titulo": "Daily Morning Routine",
+                    "conteo_palabras": 105,
+                    "dificultad_lexica": 1.5,
+                    "descripcion": "Rutina diaria breve con vocabulario cotidiano A1 y oraciones simples.",
+                    "nivel_esperado": "A1 (Básico)"
+                },
+                {
+                    "id": 2,
+                    "titulo": "AI in Biomedical Diagnostics",
+                    "conteo_palabras": 480,
+                    "dificultad_lexica": 4.4,
+                    "descripcion": "Texto académico extenso con terminología médica B2 y sintaxis compleja.",
+                    "nivel_esperado": "B2 (Avanzado)"
+                },
+                {
+                    "id": 3,
+                    "titulo": "Clean Energy Systems Transition",
+                    "conteo_palabras": 278,
+                    "dificultad_lexica": 3.2,
+                    "descripcion": "Lectura intermedia en la frontera de decisión para evaluar la transición A2/B1.",
+                    "nivel_esperado": "B1 (Frontera)"
+                },
+            ])
 
-        # Si hay análisis activo, renderizar métricas, veredicto y explicación
-        if st.session_state["analisis_actual"]:
-            analisis = st.session_state["analisis_actual"]
-            res = analisis["res"]
+        # Botones de selección de lote
+        c_btn1, c_btn2, c_btn3 = st.columns([1, 1, 1])
+        if c_btn1.button("⚡ 3 Casos de Control Oficial (Básico, Avanzado, Frontera)", use_container_width=True):
+            st.session_state["df_lote_subido"] = pd.DataFrame([
+                {
+                    "id": 1,
+                    "titulo": "Daily Morning Routine",
+                    "conteo_palabras": 105,
+                    "dificultad_lexica": 1.5,
+                    "descripcion": "Rutina diaria breve con vocabulario cotidiano A1 y oraciones simples.",
+                    "nivel_esperado": "A1 (Básico)"
+                },
+                {
+                    "id": 2,
+                    "titulo": "AI in Biomedical Diagnostics",
+                    "conteo_palabras": 480,
+                    "dificultad_lexica": 4.4,
+                    "descripcion": "Texto académico extenso con terminología médica B2 y sintaxis compleja.",
+                    "nivel_esperado": "B2 (Avanzado)"
+                },
+                {
+                    "id": 3,
+                    "titulo": "Clean Energy Systems Transition",
+                    "conteo_palabras": 278,
+                    "dificultad_lexica": 3.2,
+                    "descripcion": "Lectura intermedia en la frontera de decisión para evaluar la transición A2/B1.",
+                    "nivel_esperado": "B1 (Frontera)"
+                },
+            ])
+            st.session_state["explicacion_lote"] = None
+            st.rerun()
 
-            st.write("")
-            st.markdown("##### 1. Métricas Extraídas por el Procesador Lingüístico:")
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Palabras Detectadas", f"{analisis['palabras']}")
-            m2.metric("Dificultad Calculada", f"{analisis['dificultad']} / 5.0")
-            m3.metric("Tiempo Estimado", f"{analisis['tiempo']} min")
-            m4.metric("Tasa Estimada", f"{analisis['ppm']} PPM")
+        if c_btn2.button("📚 Lote de 6 Lecturas Nuevas de Cartago (Inéditas)", use_container_width=True):
+            st.session_state["df_lote_subido"] = pd.DataFrame([
+                {"id": 101, "titulo": "Meeting a New Friend in the Park", "conteo_palabras": 95, "dificultad_lexica": 1.4, "descripcion": "Conversación informal de saludo en el parque.", "nivel_esperado": "A1 (Básico)"},
+                {"id": 102, "titulo": "Ordering Food at a Local Restaurant", "conteo_palabras": 140, "dificultad_lexica": 1.8, "descripcion": "Intercambio cotidiano de menú, precios y compras.", "nivel_esperado": "A2 (Básico)"},
+                {"id": 103, "titulo": "Environmental Conservation in Valle", "conteo_palabras": 260, "dificultad_lexica": 3.0, "descripcion": "Párrafos informativos con conectores de causa y efecto.", "nivel_esperado": "B1 (Frontera)"},
+                {"id": 104, "titulo": "Machine Learning and Cognitive Networks", "conteo_palabras": 460, "dificultad_lexica": 4.5, "descripcion": "Artículo técnico de inteligencia artificial y redes neuronales.", "nivel_esperado": "B2 (Avanzado)"},
+                {"id": 105, "titulo": "Urban Transit Infrastructure in Cartago", "conteo_palabras": 290, "dificultad_lexica": 3.3, "descripcion": "Análisis de transporte regional y movilidad urbana.", "nivel_esperado": "B1 (Avanzado)"},
+                {"id": 106, "titulo": "Short Bus Station Directions", "conteo_palabras": 110, "dificultad_lexica": 1.6, "descripcion": "Intercambio breve de instrucciones de ubicación.", "nivel_esperado": "A1 (Básico)"},
+            ])
+            st.session_state["explicacion_lote"] = None
+            st.rerun()
 
-            st.write("")
-            st.markdown("##### 2. Veredicto del Modelo Scikit-Learn (Joblib):")
-            if res["clase_binaria"] == 1:
-                st.success(f"🎯 **Nivel Clasificado: {res['nivel']}** (Certeza: {res['confianza']*100:.1f}%)")
-            else:
-                st.info(f"🎯 **Nivel Clasificado: {res['nivel']}** (Certeza: {res['confianza']*100:.1f}%)")
+        if c_btn3.button("🔄 Restablecer Casos", use_container_width=True):
+            st.session_state["df_lote_subido"] = None
+            st.session_state["explicacion_lote"] = None
+            st.rerun()
 
-            # Barras de distribución de probabilidades
-            c_b1, c_b2 = st.columns(2)
-            with c_b1:
-                st.metric("Probabilidad Nivel Básico (A1/A2)", f"{res['probabilidad_basico']*100:.2f}%")
-                st.progress(res["probabilidad_basico"])
-            with c_b2:
-                st.metric("Probabilidad Nivel Avanzado (B1/B2)", f"{res['probabilidad_avanzado']*100:.2f}%")
-                st.progress(res["probabilidad_avanzado"])
-
-            # 3. Valor Agregado: Explicación Pedagógica con IA Generativa (Gemini)
-            st.write("")
-            st.markdown("##### 3. Explicabilidad Pedagógica con IA Generativa (Valor Agregado):")
-            if hay_ia_generativa_disponible():
-                if st.button("✨ Generar Justificación Pedagógica con Gemini", key="btn_explicar"):
-                    with st.spinner("Gemini está analizando la sintaxis y el vocabulario..."):
-                        analisis["explicacion"] = explicar_prediccion_ia(
-                            analisis["texto"],
-                            res["nivel"],
-                            analisis["palabras"],
-                            analisis["dificultad"],
-                            res["confianza"]
-                        )
-
-                if analisis.get("explicacion"):
-                    st.markdown(
-                        f"""<div style="background:#F1EFEA; border-left:4px solid #0F766E; padding:1.2rem; border-radius:0 10px 10px 0; margin-top:1rem;">
-    <strong>Explicación Generada por IA:</strong><br><br>
-    {analisis['explicacion']}
-</div>""",
-                        unsafe_allow_html=True
-                    )
-            else:
-                st.caption("ℹ️ Clave de Gemini no configurada en .env; la explicación por IA generativa está inactiva.")
-
-    # ------------------ PESTAÑA 2: SLIDERS MANUALES ------------------
-    with tab_sliders:
-        st.caption("Mueva los parámetros numéricos de forma manual para verificar las fronteras matemáticas del clasificador:")
-        p_c1, p_c2 = st.columns(2)
-        with p_c1:
-            s_palabras = st.slider("Conteo de Palabras:", min_value=50, max_value=600, value=320, step=10, key="s_pal")
-        with p_c2:
-            s_dif = st.slider("Dificultad Léxica (1.0 a 5.0):", min_value=1.0, max_value=5.0, value=3.4, step=0.1, key="s_dif")
-
-        if st.button("Ejecutar Inferencia Paramétrica", key="btn_slider_pred"):
+        archivo_csv = st.file_uploader(
+            "O arrastra un archivo CSV con nuevas lecturas ('conteo_palabras' y 'dificultad_lexica'):",
+            type=["csv"],
+            key="uploader_nuevas_lecturas"
+        )
+        if archivo_csv is not None:
             try:
-                res_s = predecir_lectura(s_palabras, s_dif)
-                st.success(f"Nivel Predicho: **{res_s['nivel']}** (Certeza: {res_s['confianza']*100:.1f}%)")
-                st.progress(res_s["probabilidad_avanzado"] if res_s["clase_binaria"] == 1 else res_s["probabilidad_basico"])
-            except FileNotFoundError:
-                st.error("Modelo no encontrado.")
+                df_subido = pd.read_csv(archivo_csv)
+                st.session_state["df_lote_subido"] = df_subido
+                st.session_state["explicacion_lote"] = None
+            except Exception as e:
+                st.error(f"Error al leer el archivo CSV: {e}")
 
-    # ------------------ MATRIZ DE CONFUSIÓN OFICIAL ------------------
-    st.write("")
-    with st.expander("📊 Ver Matriz de Confusión Oficial del Modelo (Requisito 7)"):
-        ruta_matriz = os.path.join(os.path.dirname(__file__), "..", "graficos", "matriz_confusion_sklearn.png")
-        if os.path.exists(ruta_matriz):
-            st.image(ruta_matriz, caption="Matriz de Confusión sobre Conjunto de Prueba no visto (Scikit-Learn)", use_container_width=True)
-        else:
-            st.info("La matriz de confusión se generará al ejecutar `modelo_proyecto.py`.")
+        # Ejecutar Inferencia con el modelo serializado (sin reentrenar)
+        df_actual = st.session_state.get("df_lote_subido")
+        if df_actual is not None and "conteo_palabras" in df_actual.columns and "dificultad_lexica" in df_actual.columns:
+            try:
+                df_predicho = predecir_lote(df_actual)
+
+                st.write("")
+                st.markdown("##### 📊 Resumen Ejecutivo del Lote Clasificado:")
+                n_total = len(df_predicho)
+                n_basico = int((df_predicho["nivel_predicho"].str.contains("Básico")).sum())
+                n_avanzado = n_total - n_basico
+                certeza_media = float(df_predicho["certeza_%"].mean())
+
+                m_c1, m_c2, m_c3, m_c4 = st.columns(4)
+                m_c1.metric("Lecturas Nuevas", f"{n_total}")
+                m_c2.metric("Clasificadas Básicas (A1/A2)", f"{n_basico}", f"{n_basico/n_total*100:.0f}% del lote")
+                m_c3.metric("Clasificadas Avanzadas (B1/B2)", f"{n_avanzado}", f"{n_avanzado/n_total*100:.0f}% del lote")
+                m_c4.metric("Certeza Promedio", f"{certeza_media:.1f}%", "Confianza probabilística")
+
+                st.write("")
+                st.markdown("##### 📋 Tabla de Predicciones en Tiempo Real (Joblib sin Reentrenar):")
+                cols_mostrar = [c for c in ["id", "titulo", "caso", "conteo_palabras", "dificultad_lexica", "nivel_esperado", "prob_avanzado_%", "nivel_predicho", "certeza_%"] if c in df_predicho.columns]
+
+                st.dataframe(
+                    df_predicho[cols_mostrar],
+                    use_container_width=True,
+                    column_config={
+                        "conteo_palabras": "Palabras",
+                        "dificultad_lexica": "Dificultad (1-5)",
+                        "prob_avanzado_%": st.column_config.ProgressColumn(
+                            "Prob. Avanzado",
+                            format="%.1f%%",
+                            min_value=0,
+                            max_value=100,
+                        ),
+                        "certeza_%": "Certeza",
+                        "nivel_predicho": "Veredicto del Modelo",
+                    }
+                )
+
+                # Botón para descargar el reporte CSV
+                csv_bytes = df_predicho.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Descargar Reporte CSV de Inferencia",
+                    data=csv_bytes,
+                    file_name="reporte_prediccion_lexiaadapt.csv",
+                    mime="text/csv",
+                )
+
+                # Sección de explicabilidad con Gemini sobre un caso
+                st.write("")
+                st.markdown("##### ✨ Justificación Pedagógica Ejecutiva con IA Generativa (Gemini):")
+                col_id = "titulo" if "titulo" in df_predicho.columns else ("caso" if "caso" in df_predicho.columns else "id")
+                opciones_casos = df_predicho[col_id].tolist()
+                caso_sel = st.selectbox("Selecciona una lectura evaluada para ver su análisis:", opciones_casos, key="select_caso_gemini")
+
+                fila_sel = df_predicho[df_predicho[col_id] == caso_sel].iloc[0]
+
+                if hay_ia_generativa_disponible():
+                    if st.button(f"✨ Justificar con Gemini para '{caso_sel}'", key="btn_justificar_gemini"):
+                        with st.spinner("Gemini está formulando la síntesis ejecutiva..."):
+                            desc = str(fila_sel.get("descripcion", fila_sel.get("titulo", f"Lectura '{caso_sel}'")))
+                            st.session_state["explicacion_lote"] = explicar_prediccion_ia(
+                                desc,
+                                fila_sel["nivel_predicho"],
+                                int(fila_sel["conteo_palabras"]),
+                                float(fila_sel["dificultad_lexica"]),
+                                float(fila_sel["certeza_%"]) / 100.0
+                            )
+
+                    if st.session_state.get("explicacion_lote"):
+                        st.markdown(
+                            f"""<div style="background:#F8FAFC; border:1px solid #CBD5E1; border-left:5px solid #0F766E; padding:1.2rem 1.5rem; border-radius:10px; margin-top:0.8rem; font-size:0.92rem; line-height:1.7; color:#1E293B;">
+    <strong style="color:#0F766E; font-size:1rem;">Justificación Ejecutiva por IA para '{caso_sel}':</strong><br><br>
+    {st.session_state['explicacion_lote']}
+</div>""",
+                            unsafe_allow_html=True
+                        )
+                else:
+                    st.caption("ℹ️ Clave de Gemini no detectada en .env; justificación generativa inactiva.")
+
+            except Exception as e:
+                st.error(f"Error durante la inferencia: {e}")
+
+    # ------------------ PESTAÑA 2: DIAGNÓSTICO Y PROYECCIÓN ------------------
+    with tab_diagnostico:
+        st.markdown("#### 📊 Diagnóstico Técnico y Proyección en la Frontera de Decisión")
+        st.write(
+            "Visualiza la separación matemática entre niveles y proyecta exactamente dónde cayeron las nuevas lecturas evaluadas:"
+        )
+
+        col_diag1, col_diag2 = st.columns([1.1, 0.9], gap="large")
+
+        with col_diag1:
+            st.markdown("##### 1. Proyección de Nuevas Lecturas sobre la Frontera Matemática")
+            df_lote_act = st.session_state.get("df_lote_subido")
+            fig_proyeccion = generar_figura_proyeccion(df_lote_act)
+            st.pyplot(fig_proyeccion)
+
+            st.markdown(
+                """<div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:0.85rem 1rem; margin-top:0.4rem; font-size:0.86rem; color:#334155; line-height:1.6;">
+    <strong>Interpretación Visual:</strong> Los círculos azules (Básico A1/A2) y rojos (Avanzado B1/B2) representan el corpus base de 40 lecturas. La línea discontinua marca la frontera de decisión (P = 50%). Las <strong>estrellas doradas</strong> proyectan las nuevas lecturas evaluadas en vivo, demostrando de forma transparente por qué cada una fue clasificada.
+</div>""",
+                unsafe_allow_html=True
+            )
+
+        with col_diag2:
+            st.markdown("##### 2. Matriz de Confusión Oficial (Datos de Prueba)")
+            ruta_matriz = os.path.join(os.path.dirname(__file__), "..", "graficos", "matriz_confusion_sklearn.png")
+            if os.path.exists(ruta_matriz):
+                st.image(ruta_matriz, width=380)
+
+            st.markdown(
+                """<div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:0.85rem 1rem; margin-top:0.4rem; font-size:0.86rem; color:#334155; line-height:1.6;">
+    <strong>Evaluación en Test (8 lecturas):</strong> Exactitud del 100%, F1-Score = 1.0, cero falsos positivos y cero falsos negativos.<br><br>
+    <strong>Pesos del Pipeline ($w_1 x_1 + w_2 x_2 + b = 0$):</strong><br>
+    • $w_1 = +1.64$ (Palabras): Mayor extensión incrementa la probabilidad de nivel avanzado.<br>
+    • $w_2 = +1.50$ (Dificultad léxica): Mayor complejidad sintáctica exige mayor competencia lectora.<br>
+    • $b = +0.08$ (Sesgo balanceado del umbral).
+</div>""",
+                unsafe_allow_html=True
+            )

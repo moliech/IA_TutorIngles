@@ -2,7 +2,6 @@
 src/gemini_tutor.py
 
 Módulo de Integración con IA Generativa (Google Gemini API)
-Valor Agregado (Opcional) - Requisito de los Lineamientos del Proyecto Final
 Proporciona explicaciones pedagógicas de predicciones y asistencia interactiva a estudiantes.
 """
 
@@ -85,22 +84,21 @@ def consultar_gemini(prompt: str, system_instruction: str = None) -> str:
 
     return "No fue posible conectar con el servicio de IA generativa en este momento (alta demanda)."
 
-def explicar_prediccion_ia(texto: str, nivel_predicho: str, palabras: int, dificultad: float, confianza: float) -> str:
-    """Genera una explicación pedagógica en lenguaje natural sobre por qué el texto tiene ese nivel."""
+def explicar_prediccion_ia(titulo_o_desc: str, nivel_predicho: str, palabras: int, dificultad: float, confianza: float) -> str:
+    """Genera una justificación ejecutiva, directa y pedagógica en exactamente 3 viñetas concisas."""
     system_prompt = (
-        "Eres un pedagogo experto en lingüística aplicada y enseñanza del inglés como segunda lengua "
-        "para estudiantes del Valle del Cauca, Colombia. Tu rol es explicar de forma clara, motivadora "
-        "y científica por qué un modelo de Machine Learning clasificó un texto en un determinado nivel CEFR."
+        "Eres un docente experto en evaluación y lectura en inglés para estudiantes de Cartago, "
+        "Valle del Cauca. Tu estilo es conciso, claro, técnico y pedagógico, sin rodeos teóricos extensos."
     )
     prompt = (
-        f"El modelo de Machine Learning clasificó el siguiente texto como '{nivel_predicho}' "
-        f"con una confianza del {confianza*100:.1f}%. Métricas calculadas: {palabras} palabras "
-        f"y dificultad léxica de {dificultad:.2f}/5.0.\n\n"
-        f"Texto analizado:\n\"\"\"{texto[:500]}\"\"\"\n\n"
-        "Redacta una explicación de 2 a 3 párrafos cortos en español explicando:\n"
-        "1. Las razones lingüísticas (longitud, conectores, vocabulario, sintaxis) que justifican este nivel.\n"
-        "2. Qué tipo de reto cognitivo representa para un estudiante de Cartago.\n"
-        "3. Una recomendación pedagógica puntual para trabajar esta lectura."
+        f"El modelo de Machine Learning serializado (modelo_final.joblib) clasificó la lectura '{titulo_o_desc}' "
+        f"como '{nivel_predicho}' con una certeza del {confianza*100:.1f}%.\n"
+        f"- Extensión: {palabras} palabras.\n"
+        f"- Dificultad léxica: {dificultad:.2f} / 5.0.\n\n"
+        "Redacta una justificación ejecutiva en exactamente 3 viñetas breves (máximo 25 palabras por viñeta):\n"
+        "• 🎯 Diagnóstico de Inferencia: Valida el nivel asignado y la certeza probabilística obtenida.\n"
+        "• ⚖️ Fundamento Cuantitativo: Explica cómo la cantidad de palabras y la complejidad léxica sitúan la lectura frente a la frontera de decisión.\n"
+        "• 💡 Recomendación Pedagógica: Acción didáctica puntual para el docente y el estudiante en Cartago."
     )
     return consultar_gemini(prompt, system_instruction=system_prompt)
 

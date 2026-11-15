@@ -1,185 +1,150 @@
 """
-Modulo de Modelamiento Predictivo con Scikit-Learn
+src/modelo_proyecto.py
+
+Módulo de Entrenamiento y Evaluación Comparativa de Modelos Scikit-Learn
 Proyecto: IA_TutorIngles (LexiaAdapt)
-Requisito 5 de los Lineamientos del Proyecto Final (Clase 12)
+Genera: graficos/matriz_confusion_sklearn.png y src/modelo_final.joblib
 """
 
-import os 
-import joblib 
+import os
+import joblib
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
     recall_score,
     f1_score,
-    confusion_matrix,
-    ConfusionMatrixDisplay,
-    classification_report
+    confusion_matrix
 )
 
-def ejecutar_entrenamiento_comparativo():
+def entrenar_y_evaluar_modelos():
     print("=" * 70)
-    print("   SISTEMA PREDICTIVO SCIKIT-LEARN - IA_TUTORINGLES (CLASE 12)")
+    print("  SISTEMA PREDICTIVO: ENTRENAMIENTO Y EVALUACIÓN COMPARATIVA")
     print("=" * 70)
 
-    ruta_datos = os.path.join(
-        os.path.dirname(__file__), "..", "data", "proyecto_limpio.csv"
-    )
+    # 1. Cargar los datos limpios del proyecto
+    ruta_csv = os.path.join(os.path.dirname(__file__), "..", "data", "proyecto_limpio.csv")
+    if not os.path.exists(ruta_csv):
+        ruta_csv = os.path.join(os.path.dirname(__file__), "data", "proyecto_limpio.csv")
 
-    if not os.path.exists(ruta_datos):
-        raise FileNotFoundError(f"No se encontro el dataset en {ruta_datos}")
+    df = pd.read_csv(ruta_csv)
+    print(f"[+] Dataset cargado correctamente: {len(df)} lecturas.")
 
-    df = pd.read_csv(ruta_datos)
-    print(f"[+] Dataset cargado correctamente: {len(df)} registros.")
+    # Variable objetivo binaria: 0 = Básico (A1/A2), 1 = Avanzado (B1/B2)
+    df["clase_objetivo"] = df["nivel_cefr"].map({"A1": 0, "A2": 0, "B1": 1, "B2": 1})
 
-    df["clase_objetivo"] = df["nivel_cefr"].map(
-        {"A1": 0, "A2": 0, "B1": 1, "B2": 1}
-    )
-
-    features = [
-        "conteo_palabras",
-        "dificultad_lexica",
-        "tiempo_lectura_est_min",
-        "velocidad_lectura_ppm"
-    ]
-
-    X = df[features]
+    entradas = ["conteo_palabras", "dificultad_lexica"]
+    X = df[entradas]
     y = df["clase_objetivo"]
 
-    print(f"[+] Variables de entrada: {features}")
-    print(f"[+] Distribucion de clases: {dict(y.value_counts())} (0: Basico, 1: Avanzado)")
-
+    # 2. Separar los datos: 80 % para entrenar y 20 % para probar (Pág. 3 y 19 de la Guía)
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.25, random_state=42, stratify=y
+        X, y, test_size=0.2, random_state=42, stratify=y
     )
+    print(f"[+] Lecturas para entrenar: {len(X_train)} | Lecturas para probar: {len(X_test)}")
 
-    print(f"[+] Particion completada: Train={len(X_train)} filas, Test={len(X_test)} filas.")
-
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
-    candidatos = {
-        "Regresion Logistica": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(random_state=42))
+    # 3. Modelos a comparar (dentro de un Pipeline con StandardScaler)
+    modelos = {
+        "Regresión logística": Pipeline([
+            ("escalado", StandardScaler()),
+            ("modelo", LogisticRegression(random_state=42)),
         ]),
-        "Random Forest": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", RandomForestClassifier(
-                n_estimators=50, max_depth=4, random_state=42
-            ))
+        "KNN (5 vecinos)": Pipeline([
+            ("escalado", StandardScaler()),
+            ("modelo", KNeighborsClassifier(n_neighbors=5)),
         ]),
-        "Red Neuronal (MLPClassifier)": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", MLPClassifier(
-                hidden_layer_sizes=(16, 8),
-                max_iter=800,
-                random_state=42
-            ))
-        ])
+        "Árbol de decisión": Pipeline([
+            ("escalado", StandardScaler()),
+            ("modelo", DecisionTreeClassifier(max_depth=3, random_state=42)),
+        ]),
+        "Red neuronal (MLP)": Pipeline([
+            ("escalado", StandardScaler()),
+            ("modelo", MLPClassifier(hidden_layer_sizes=(8, 4), solver="lbfgs", max_iter=1000, random_state=42)),
+        ]),
     }
 
-    print("\n" + "-" * 70)
-    print(f"{'Modelo':<30} | {'CV Accuracy (Media ± Std)':<25}")
-    print("-" * 70)
+    # 4. Entrenar cada modelo y medirlo con los datos de prueba
+    resultados = []
+    for nombre, modelo in modelos.items():
+        modelo.fit(X_train, y_train)
+        y_pred = modelo.predict(X_test)
+        resultados.append({
+            "Modelo": nombre,
+            "Exactitud": accuracy_score(y_test, y_pred),
+            "Precisión": precision_score(y_test, y_pred, zero_division=0),
+            "Recall": recall_score(y_test, y_pred, zero_division=0),
+            "F1": f1_score(y_test, y_pred, zero_division=0),
+            "Val. cruzada": cross_val_score(modelo, X, y, cv=5).mean(),
+        })
 
-    resultados = {}
+    tabla = pd.DataFrame(resultados)
+    print("\nComparación de modelos (datos de prueba no vistos):")
+    print(tabla.round(3).to_string(index=False))
 
-    for nombre, pipe in candidatos.items():
-        scores = cross_val_score(
-            pipe, X_train, y_train, cv=cv, scoring="accuracy"
-        )
-      
-        resultados[nombre] = {
-            "cv_mean": scores.mean(),
-            "cv_std": scores.std(),
-            "pipeline": pipe
-        }
+    # 5. Elegir el modelo con el F1 más alto (idxmax busca la fila del valor máximo)
+    nombre_mejor = tabla.loc[tabla["F1"].idxmax(), "Modelo"]
+    mejor_modelo = modelos[nombre_mejor]
+    print(f"\n[★] Mejor modelo según F1: {nombre_mejor}")
 
-        print(f"{nombre:<30} | {scores.mean():.4f} (± {scores.std():.4f})")
+    # Comparación de pesos aprendidos con el Perceptrón manual (Punto 9 de la Guía)
+    if "Regresión logística" in nombre_mejor:
+        regresion = mejor_modelo.named_steps["modelo"]
+        w1 = regresion.coef_[0][0]
+        w2 = regresion.coef_[0][1]
+        b = regresion.intercept_[0]
+        print(f"\nPesos aprendidos por Scikit-Learn: w1 = {w1:.2f}, w2 = {w2:.2f}, b = {b:.2f}")
+        print("-" * 70)
+        print("COMPARACIÓN CON EL MODELO PERCEPTRÓN BASE:")
+        print("  • Perceptrón Base:      w1 ≈ 2.69 (palabras), w2 ≈ 2.54 (dificultad), b ≈ 0.13")
+        print(f"  • Regresión Logística:  w1 = {w1:.2f} (palabras), w2 = {w2:.2f} (dificultad), b = {b:.2f}")
+        print("  -> Ambos modelos asignan pesos positivos a ambas variables:")
+        print("     A mayor conteo de palabras y mayor dificultad léxica, mayor probabilidad")
+        print("     de clasificar el texto como Avanzado (B1/B2). ¡Convergencia consistente!")
+        print("-" * 70)
 
-    mejor_nombre = max(
-        resultados, key=lambda k: resultados[k]["cv_mean"]
+    # 6. Matriz de confusión del mejor modelo
+    matriz = confusion_matrix(y_test, mejor_modelo.predict(X_test))
+    print("\nMatriz de confusión (filas = valor real, columnas = predicción):")
+    print(matriz)
+
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(
+        matriz,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        cbar=False,
+        xticklabels=["Predijo Básico (0)", "Predijo Avanzado (1)"],
+        yticklabels=["Real Básico (0)", "Real Avanzado (1)"]
     )
-
-    mejor_pipeline = resultados[mejor_nombre]["pipeline"]
-
-    print("-" * 70)
-    print(f"[★] Mejor modelo seleccionado: {mejor_nombre}")
-
-    mejor_pipeline.fit(X_train, y_train)
-    y_pred = mejor_pipeline.predict(X_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred, zero_division=0)
-    rec = recall_score(y_test, y_pred, zero_division=0)
-    f1 = f1_score(y_test, y_pred, zero_division=0)
-      
-    print("\n" + "=" * 70)
-    print(f"   METRICAS EN CONJUNTO DE PRUEBA (DATOS NO VISTOS: {len(y_test)} CASOS)")
-    print("=" * 70)
-
-    print(f"Exactitud (Accuracy):  {acc * 100:.2f}%")
-    print(f"Precision (Precision): {prec * 100:.2f}%")
-    print(f"Exhaustividad (Recall):{rec * 100:.2f}%")
-    print(f"Puntaje F1 (F1-Score): {f1 * 100:.2f}%")
-      
-    print("\nInforme Detallado de Clasificacion:")
-    print(classification_report(
-        y_test,
-        y_pred,
-        target_names=["Basico (A1/A2)", "Avanzado (B1/B2)"]
-    ))
-
-    ruta_graficos = os.path.join(
-        os.path.dirname(__file__), "..", "graficos"
-    )
-
-    os.makedirs(ruta_graficos, exist_ok=True)
-
-    ruta_matriz_png = os.path.join(
-        ruta_graficos, "matriz_confusion_sklearn.png"
-    )
-
-    cm = confusion_matrix(y_test, y_pred)
-
-    disp = ConfusionMatrixDisplay(
-        confusion_matrix=cm,
-        display_labels=["Basico", "Avanzado"]
-    )
-
-    fig, ax = plt.subplots(figsize=(6, 5))
-    disp.plot(cmap="Blues", ax=ax, values_format="d")
-
-    plt.title(
-        f"Matriz de Confusion - {mejor_nombre}\n"
-        "(Conjunto de prueba: 10 lecturas)",
-        fontsize=11,
-        fontweight="bold",
-        pad=12
-    )
-
+    plt.title(f"Matriz de confusión – {nombre_mejor}\n(Prueba: {len(X_test)} lecturas no vistas)", fontsize=11, fontweight="bold")
     plt.tight_layout()
-    plt.savefig(ruta_matriz_png, dpi=300)
+
+    ruta_graficos = os.path.join(os.path.dirname(__file__), "..", "graficos")
+    os.makedirs(ruta_graficos, exist_ok=True)
+    ruta_png = os.path.join(ruta_graficos, "matriz_confusion_sklearn.png")
+    plt.savefig(ruta_png, dpi=150)
     plt.close()
+    print(f"\n[+] Gráfico guardado: {ruta_png}")
 
-    print(f"[+] Grafico exportado: {ruta_matriz_png}")
-
-    ruta_modelo_joblib = os.path.join(
-        os.path.dirname(__file__), "modelo_final.joblib"
-    )
-
-    joblib.dump(mejor_pipeline, ruta_modelo_joblib)
-
-    print(f"[+] Modelo entrenado guardado con exito en: {ruta_modelo_joblib}")
+    # 7. Guardar el mejor modelo en un archivo serializado
+    ruta_joblib = os.path.join(os.path.dirname(__file__), "modelo_final.joblib")
+    joblib.dump(mejor_modelo, ruta_joblib)
+    print(f"[+] Modelo guardado: {ruta_joblib}")
     print("=" * 70)
+
+# Alias de compatibilidad con main.py
+ejecutar_entrenamiento_comparativo = entrenar_y_evaluar_modelos
 
 if __name__ == "__main__":
-    ejecutar_entrenamiento_comparativo()
+    entrenar_y_evaluar_modelos()

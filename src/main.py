@@ -55,7 +55,7 @@ def main():
     print("\n[INFO] 8. Ejecutando Perceptrón con Sigmoide y Descenso del Gradiente...")
     ejecutar_perceptron_proyecto()
 
-    print("\n[INFO] 9. Ejecutando Modelamiento Predictivo con Scikit-Learn (Clase 12)...")
+    print("\n[INFO] 9. Ejecutando Modelamiento Predictivo con Scikit-Learn...")
     ejecutar_entrenamiento_comparativo()
 
     print("\n=========================================================")
