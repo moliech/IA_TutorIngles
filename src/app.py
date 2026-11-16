@@ -3,15 +3,24 @@ src/app.py
 
 Aplicación Principal Streamlit - LexiaAdapt (IA_TutorIngles)
 Plataforma de Lectura Adaptativa e Inferencia en Vivo
-Corte 3 - Inteligencia Artificial
+Sistema Inteligente de Comprensión Lectora
 """
 
 import os
 import re
+import importlib
 import pandas as pd
 import streamlit as st
 
-# Importación de módulos internos del sistema
+# Importación y recarga en caliente de módulos internos del sistema
+import ui_theme
+import usar_modelo
+import gemini_tutor
+
+importlib.reload(ui_theme)
+importlib.reload(usar_modelo)
+importlib.reload(gemini_tutor)
+
 from ui_theme import aplicar_tema_lexia, render_badge
 from usar_modelo import predecir_lectura, predecir_lote, generar_figura_proyeccion
 from gemini_tutor import (
@@ -20,6 +29,7 @@ from gemini_tutor import (
     responder_duda_estudiante,
     generar_resumen_espanol,
     obtener_traduccion_con_cache,
+    traducir_texto_espanol,
 )
 
 st.set_page_config(
@@ -65,27 +75,65 @@ def obtener_mision_pedagogica(nivel_cefr: str) -> str:
             "Intenta responder las preguntas de comprensión del tutor directamente en inglés para reforzar tu fluidez."
         )
 
-# ------------------ ANALIZADOR DE TEXTO LIBRE ------------------
-def estimar_metricas_texto(texto: str):
+# ------------------ EXTRACTOR LINGÜÍSTICO Y CALIBRADOR DE DIFICULTAD ------------------
+def calcular_metricas_lectura(texto: str):
     """
-    Extrae variables cuantitativas de cualquier texto en inglés
-    y calibra la dificultad léxica sobre el corpus oficial del proyecto.
+    Calcula el conteo exacto de palabras y calibra la dificultad léxica (1.0 a 5.0)
+    a partir de indicadores lingüísticos positivos independientes de la extensión
+    (longitud media de palabra, proporción de léxico complejo >=9 letras y extensión oracional).
     """
-    palabras = re.findall(r"\b[a-zA-Z]+\b", texto)
+    palabras = re.findall(r"\b[a-zA-Z]+\b", str(texto))
     n = len(palabras)
-    if n < 5:
-        return max(1, n), 1.2, 0.5, 85.0
+    if n == 0:
+        return 0, 1.0
 
     avg_len = sum(len(w) for w in palabras) / n
-    long_w = sum(1 for w in palabras if len(w) >= 7) / n
-    ttr = len(set(w.lower() for w in palabras)) / n
+    pct_long = sum(1 for w in palabras if len(w) >= 9) / n
+    oraciones = [s.strip() for s in re.split(r"[.!?]+", str(texto)) if s.strip()]
+    avg_sent_len = min(35.0, n / len(oraciones)) if oraciones else min(35.0, float(n))
 
-    # Regresión calibrada sobre el corpus limpio oficial (R2 = 0.85)
-    dif = (0.01258 * n) + (0.51191 * avg_len) - (0.11259 * long_w) - (0.3062 * ttr) - 1.6466
-    dificultad = round(max(1.0, min(5.0, dif)), 2)
-    tiempo = round(max(0.5, n / 88.0), 1)
-    ppm = round(n / tiempo, 1)
-    return n, dificultad, tiempo, ppm
+    raw_dif = -0.2177 + (0.0782 * avg_len) + (3.3717 * pct_long) + (0.0868 * avg_sent_len)
+    dif = round(float(min(5.0, max(1.0, raw_dif))), 2)
+    return n, dif
+
+def preparar_lote_entradas(df_in: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normaliza el DataFrame de entrada. Si contiene la lectura en texto,
+    el sistema calcula automáticamente el conteo de palabras y la dificultad léxica.
+    """
+    df = df_in.copy()
+    cols_map = {str(c).strip().lower(): c for c in df.columns}
+
+    # Detectar columna con el texto de la lectura
+    col_lectura = None
+    for k in ["lectura", "texto", "texto_ingles", "text", "content", "reading"]:
+        if k in cols_map:
+            col_lectura = cols_map[k]
+            break
+
+    # Si no tiene columnas numéricas directas pero sí texto, se calculan automáticamente
+    tiene_metricas = "conteo_palabras" in cols_map and "dificultad_lexica" in cols_map
+    if col_lectura and not tiene_metricas:
+        p_list = []
+        d_list = []
+        for txt in df[col_lectura].astype(str):
+            p, d = calcular_metricas_lectura(txt)
+            p_list.append(p)
+            d_list.append(d)
+        df["conteo_palabras"] = p_list
+        df["dificultad_lexica"] = d_list
+
+    # Estandarizar nombres canónicos para la visualización
+    for orig in list(df.columns):
+        low = str(orig).strip().lower()
+        if low in ["titulo", "title"]:
+            df = df.rename(columns={orig: "titulo"})
+        elif low in ["categoria", "category"]:
+            df = df.rename(columns={orig: "categoria"})
+        elif low in ["id", "codigo"]:
+            df = df.rename(columns={orig: "id"})
+
+    return df
 
 # ------------------ ENCABEZADO MODERNO Y EDUCATIVO ------------------
 st.markdown(
@@ -318,130 +366,272 @@ else:
 
     # ------------------ PESTAÑA 1: INFERENCIA SOBRE NUEVAS LECTURAS ------------------
     with tab_inferencia:
-        # 1. Dataset base de referencia colapsable
-        with st.expander("📁 Ver Dataset Base Histórico de Entrenamiento (40 Lecturas de Cartago)"):
-            st.markdown(
-                "El modelo fue entrenado con un corpus equilibrado de **40 lecturas** graduadas según "
-                "el Marco Común Europeo de Referencia (MCER):"
-            )
-            c_b1, c_b2, c_b3, c_b4 = st.columns(4)
-            c_b1.metric("Lecturas A1 (Básico)", "10 lecturas", "~112 palabras")
-            c_b2.metric("Lecturas A2 (Básico)", "10 lecturas", "~201 palabras")
-            c_b3.metric("Lecturas B1 (Avanzado)", "10 lecturas", "~327 palabras")
-            c_b4.metric("Lecturas B2 (Avanzado)", "10 lecturas", "~473 palabras")
-
-            st.dataframe(
-                df_lecturas[["id", "titulo", "nivel_cefr", "conteo_palabras", "dificultad_lexica", "categoria"]],
-                use_container_width=True,
-                column_config={
-                    "conteo_palabras": "Palabras",
-                    "dificultad_lexica": "Dificultad (1-5)",
-                    "nivel_cefr": "Nivel MCER"
-                }
-            )
-
-        st.write("")
         st.markdown("#### ⚡ Evaluación de Nuevas Lecturas Inéditas")
         st.write(
-            "Carga un lote de prueba o tu propio archivo CSV para someterlo al modelo entrenado en milisegundos:"
+            "Carga un lote de prueba o tu propio archivo CSV para someterlo al modelo serializado (`modelo_final.joblib`) sin reentrenar:"
         )
 
-        # Estado de sesión para el lote activo (por defecto carga los 3 casos clave de control)
-        if "df_lote_subido" not in st.session_state or st.session_state["df_lote_subido"] is None:
-            st.session_state["df_lote_subido"] = pd.DataFrame([
-                {
-                    "id": 1,
-                    "titulo": "Daily Morning Routine",
-                    "conteo_palabras": 105,
-                    "dificultad_lexica": 1.5,
-                    "descripcion": "Rutina diaria breve con vocabulario cotidiano A1 y oraciones simples.",
-                    "nivel_esperado": "A1 (Básico)"
-                },
-                {
-                    "id": 2,
-                    "titulo": "AI in Biomedical Diagnostics",
-                    "conteo_palabras": 480,
-                    "dificultad_lexica": 4.4,
-                    "descripcion": "Texto académico extenso con terminología médica B2 y sintaxis compleja.",
-                    "nivel_esperado": "B2 (Avanzado)"
-                },
-                {
-                    "id": 3,
-                    "titulo": "Clean Energy Systems Transition",
-                    "conteo_palabras": 278,
-                    "dificultad_lexica": 3.2,
-                    "descripcion": "Lectura intermedia en la frontera de decisión para evaluar la transición A2/B1.",
-                    "nivel_esperado": "B1 (Frontera)"
-                },
-            ])
-
-        # Botones de selección de lote
-        c_btn1, c_btn2, c_btn3 = st.columns([1, 1, 1])
-        if c_btn1.button("⚡ 3 Casos de Control Oficial (Básico, Avanzado, Frontera)", use_container_width=True):
-            st.session_state["df_lote_subido"] = pd.DataFrame([
-                {
-                    "id": 1,
-                    "titulo": "Daily Morning Routine",
-                    "conteo_palabras": 105,
-                    "dificultad_lexica": 1.5,
-                    "descripcion": "Rutina diaria breve con vocabulario cotidiano A1 y oraciones simples.",
-                    "nivel_esperado": "A1 (Básico)"
-                },
-                {
-                    "id": 2,
-                    "titulo": "AI in Biomedical Diagnostics",
-                    "conteo_palabras": 480,
-                    "dificultad_lexica": 4.4,
-                    "descripcion": "Texto académico extenso con terminología médica B2 y sintaxis compleja.",
-                    "nivel_esperado": "B2 (Avanzado)"
-                },
-                {
-                    "id": 3,
-                    "titulo": "Clean Energy Systems Transition",
-                    "conteo_palabras": 278,
-                    "dificultad_lexica": 3.2,
-                    "descripcion": "Lectura intermedia en la frontera de decisión para evaluar la transición A2/B1.",
-                    "nivel_esperado": "B1 (Frontera)"
-                },
-            ])
-            st.session_state["explicacion_lote"] = None
-            st.rerun()
-
-        if c_btn2.button("📚 Lote de 6 Lecturas Nuevas de Cartago (Inéditas)", use_container_width=True):
-            st.session_state["df_lote_subido"] = pd.DataFrame([
-                {"id": 101, "titulo": "Meeting a New Friend in the Park", "conteo_palabras": 95, "dificultad_lexica": 1.4, "descripcion": "Conversación informal de saludo en el parque.", "nivel_esperado": "A1 (Básico)"},
-                {"id": 102, "titulo": "Ordering Food at a Local Restaurant", "conteo_palabras": 140, "dificultad_lexica": 1.8, "descripcion": "Intercambio cotidiano de menú, precios y compras.", "nivel_esperado": "A2 (Básico)"},
-                {"id": 103, "titulo": "Environmental Conservation in Valle", "conteo_palabras": 260, "dificultad_lexica": 3.0, "descripcion": "Párrafos informativos con conectores de causa y efecto.", "nivel_esperado": "B1 (Frontera)"},
-                {"id": 104, "titulo": "Machine Learning and Cognitive Networks", "conteo_palabras": 460, "dificultad_lexica": 4.5, "descripcion": "Artículo técnico de inteligencia artificial y redes neuronales.", "nivel_esperado": "B2 (Avanzado)"},
-                {"id": 105, "titulo": "Urban Transit Infrastructure in Cartago", "conteo_palabras": 290, "dificultad_lexica": 3.3, "descripcion": "Análisis de transporte regional y movilidad urbana.", "nivel_esperado": "B1 (Avanzado)"},
-                {"id": 106, "titulo": "Short Bus Station Directions", "conteo_palabras": 110, "dificultad_lexica": 1.6, "descripcion": "Intercambio breve de instrucciones de ubicación.", "nivel_esperado": "A1 (Básico)"},
-            ])
-            st.session_state["explicacion_lote"] = None
-            st.rerun()
-
-        if c_btn3.button("🔄 Restablecer Casos", use_container_width=True):
+        # Estado de sesión para el lote activo (inicia en blanco por defecto)
+        if "df_lote_subido" not in st.session_state:
             st.session_state["df_lote_subido"] = None
-            st.session_state["explicacion_lote"] = None
+        if "uploader_key_version" not in st.session_state:
+            st.session_state["uploader_key_version"] = 0
+
+        # Botones de selección de lote con lecturas reales (el sistema calcula palabras y dificultad)
+        c_btn1, c_btn2, c_btn3 = st.columns([1, 1, 1])
+        if c_btn1.button("⚡ 3 Casos de Control (Básico, Intermedio, Avanzado)", use_container_width=True):
+            st.session_state["uploader_key_version"] += 1
+            st.session_state["df_cargado_pendiente"] = pd.DataFrame([
+                {
+                    "titulo": "Daily Morning Routine",
+                    "categoria": "Cotidiano",
+                    "lectura": (
+                        "I wake up every day at six in the morning. First, I wash my face and brush my teeth. "
+                        "Then, I go to the kitchen to prepare breakfast. I usually eat scrambled eggs with fresh bread "
+                        "and drink a cup of black coffee. After eating, I walk to the university campus with my friends. "
+                        "We study computer science and practice English vocabulary in the morning classes. In the afternoon, "
+                        "I return home, help my parents with household chores, complete my homework, and read a short story. "
+                        "At night, I listen to calm music and go to sleep early to rest well."
+                    )
+                },
+                {
+                    "titulo": "Clean Energy Systems Transition",
+                    "categoria": "Ciencia",
+                    "lectura": (
+                        "The gradual structural transition toward renewable electricity and clean energy infrastructure represents "
+                        "one of the most decisive challenges for sustainable economic progress across Latin America. Replacing fossil "
+                        "fuel combustion with photovoltaic solar power plants, small hydroelectric generation stations, and modern wind "
+                        "turbine networks dramatically curtails atmospheric greenhouse emissions while upgrading aging municipal distribution "
+                        "grids. However, implementing comprehensive national decarbonization agendas requires sustained capital investment in "
+                        "decentralized battery storage systems, automated electrical substations, and digital smart-grid monitoring software. "
+                        "Regional public authorities, private engineering enterprises, and technical universities must collaborate actively to "
+                        "train skilled specialists capable of maintaining complex clean energy equipment over multiple decades. Across fertile "
+                        "agricultural valleys, integrating solar photovoltaic panels directly into automated crop irrigation systems optimizes "
+                        "groundwater consumption, reduces monthly utility expenditures for small rural farmers, and preserves long-term ecological "
+                        "stability along delicate river watersheds. Furthermore, progressive municipal regulations encouraging rooftop solar "
+                        "installations on schools, public hospitals, and commercial buildings allow local communities to generate clean energy "
+                        "close to consumption points while minimizing power transmission losses. Ultimately, coherent public policy must carefully "
+                        "align industrial productivity goals with strict biodiversity conservation commitments to foster resilient regional development."
+                    )
+                },
+                {
+                    "titulo": "AI in Biomedical Diagnostics",
+                    "categoria": "Tecnología",
+                    "lectura": (
+                        "The systematic integration of deep convolutional neural network architectures and multi-parametric predictive algorithms "
+                        "is spearheading a monumental transformation across contemporary clinical oncology and diagnostic pathology worldwide. "
+                        "Modern biomedical infrastructures increasingly deploy automated diagnostic pipelines capable of scrutinizing high-resolution "
+                        "digitized histology tissue biopsies alongside longitudinal patient genomic sequencing profiles with diagnostic accuracy "
+                        "matching specialized board-certified medical pathologists. By systematically identifying subtle microscopic morphological "
+                        "anomalies across multi-gigapixel whole-slide microscopic scans, artificial intelligence algorithms detect pre-symptomatic "
+                        "malignant cellular transformations long before macroscopic pathology becomes clinically detectable through conventional "
+                        "physical examinations or routine radiographic screening. Furthermore, automated clinical decision-support software substantially "
+                        "accelerates diagnostic workflow velocity in high-volume hospital pathology laboratories, enabling multidisciplinary healthcare "
+                        "teams to formulate highly personalized pharmacological regimens tailored precisely to individual patient molecular biomarkers "
+                        "and genetic mutations. In critical oncological interventions, early algorithmic identification fundamentally alters longitudinal "
+                        "clinical prognosis, substantially mitigating the necessity for invasive exploratory surgical biopsies and severely toxic "
+                        "systemic cytotoxic chemotherapy protocols. Beyond diagnostic imaging, sophisticated natural language processing frameworks "
+                        "continuously synthesize vast repositories of peer-reviewed medical literature and anonymized electronic health records to "
+                        "uncover unexpected epidemiological correlations and therapeutic drug interactions. Nevertheless, the widespread deployment "
+                        "of autonomous predictive systems within regional healthcare networks requires rigorous clinical validation, continuous "
+                        "algorithmic auditing, and transparent statistical calibration to prevent demographic biases arising from unrepresentative "
+                        "training cohorts. Ethical governance committees and biomedical regulatory agencies emphasize that machine learning software "
+                        "must always operate strictly as an assistive tool empowering clinical physicians rather than substituting human diagnostic "
+                        "accountability and empathetic doctor-patient communication. Continued interdisciplinary collaboration among clinical oncologists, "
+                        "computational biostatisticians, bioinformatics specialists, and software engineers remains indispensable to refine model "
+                        "interpretability, protect sensitive patient confidentiality under stringent cybersecurity protocols, and democratize universal "
+                        "access to precision diagnostic medicine across diverse healthcare environments globally."
+                    )
+                },
+            ])
+            st.session_state["df_lote_subido"] = None
+            st.session_state["explicaciones_por_caso"] = {}
+            st.session_state["ultimo_archivo_cargado"] = None
             st.rerun()
 
-        archivo_csv = st.file_uploader(
-            "O arrastra un archivo CSV con nuevas lecturas ('conteo_palabras' y 'dificultad_lexica'):",
-            type=["csv"],
-            key="uploader_nuevas_lecturas"
-        )
-        if archivo_csv is not None:
-            try:
-                df_subido = pd.read_csv(archivo_csv)
-                st.session_state["df_lote_subido"] = df_subido
-                st.session_state["explicacion_lote"] = None
-            except Exception as e:
-                st.error(f"Error al leer el archivo CSV: {e}")
+        if c_btn2.button("📚 Lote de 6 Lecturas Nuevas (Inéditas)", use_container_width=True):
+            st.session_state["uploader_key_version"] += 1
+            st.session_state["df_cargado_pendiente"] = pd.DataFrame([
+                {
+                    "titulo": "Meeting a New Friend in the Park",
+                    "categoria": "Cotidiano",
+                    "lectura": (
+                        "Hello! My name is Carlos and I am nineteen years old. Every morning I walk through the quiet park near my house. "
+                        "The park has tall green trees, pretty yellow flowers, and a nice blue lake. Today I met a friendly boy named Mateo. "
+                        "He is also a student and likes playing soccer on weekends. We talked about our favorite food, music, and English classes. "
+                        "Now we practice speaking English together every afternoon."
+                    )
+                },
+                {
+                    "titulo": "Ordering Food at a Local Restaurant",
+                    "categoria": "Cotidiano",
+                    "lectura": (
+                        "Good afternoon! Today is a sunny Saturday, so my family and I decided to have lunch at a cozy neighborhood restaurant near the river. "
+                        "When we entered, a polite waiter smiled and guided us to a quiet wooden table near the open window. "
+                        "We looked carefully at the printed menu for several minutes because every traditional dish looked delicious and fresh. "
+                        "Finally, my parents ordered grilled chicken soup, white rice, fresh green salad, and roasted potatoes with garlic. "
+                        "For dessert, my younger sister asked for sweet vanilla ice cream with sliced strawberries and cold mango juice. "
+                        "The food arrived quickly, tasted wonderful, and we left a generous tip before walking happily back home together."
+                    )
+                },
+                {
+                    "titulo": "Environmental Conservation in River Valleys",
+                    "categoria": "Ciencia",
+                    "lectura": (
+                        "Preserving biological diversity across fertile river valleys requires implementing sustainable agricultural methods alongside "
+                        "responsible regional watershed governance. Over recent decades, unregulated industrial expansion and extensive chemical "
+                        "fertilizer runoff have threatened freshwater ecosystems and reduced native forest corridors along important mountain rivers. "
+                        "Fortunately, local farming cooperatives are increasingly adopting organic composting practices, protective riparian tree barriers, "
+                        "and efficient drip irrigation infrastructure to maintain crop productivity while restoring delicate ecological balance. "
+                        "Scientific monitoring programs conducted by regional environmental institutions demonstrate that protecting natural wetlands "
+                        "filters agricultural sediments, prevents seasonal flooding in nearby towns, and sustains habitats for migratory bird species. "
+                        "Furthermore, community education workshops in rural schools teach young students how to classify recyclable materials, conserve "
+                        "household water supplies, and measure local water quality indicators. When agricultural producers, municipal leaders, and "
+                        "university researchers collaborate around shared sustainability targets, regional river basins recover vitality while "
+                        "supporting resilient rural economies over multiple generations."
+                    )
+                },
+                {
+                    "titulo": "Machine Learning and Cognitive Networks",
+                    "categoria": "Tecnología",
+                    "lectura": (
+                        "Contemporary artificial intelligence architectures leverage deep multi-layered neural topologies and attention-based "
+                        "transformer mechanisms to extract high-dimensional semantic representations from vast unstructured sensory and textual corpora. "
+                        "Unlike classical rule-based expert systems that relied strictly upon manually programmed symbolic heuristics, modern connectionist "
+                        "models autonomously discover intricate statistical regularities across billions of training parameters through iterative "
+                        "stochastic gradient optimization. These computational breakthroughs empower automated cognitive reasoning, real-time cross-lingual "
+                        "neural translation, precision speech recognition, and high-resolution diagnostic computer vision across global enterprise platforms. "
+                        "In parallel, self-supervised pretraining paradigms enable foundational neural networks to generalize rapidly onto specialized "
+                        "downstream domains—such as molecular protein folding prediction, autonomous robotic navigation, and personalized educational "
+                        "tutoring—using remarkably modest quantities of manually annotated training samples. Nevertheless, scaling massive deep learning "
+                        "models introduces substantial engineering and ethical challenges involving exponential computational energy consumption, hardware "
+                        "semiconductor scarcity, algorithmic opacity, and the unintended amplification of historical socioeconomic biases embedded inside "
+                        "internet datasets. Consequently, contemporary machine learning researchers prioritize developing parameter-efficient quantization "
+                        "techniques, interpretable explainable artificial intelligence frameworks, and rigorous safety alignment benchmarks to verify "
+                        "that autonomous cognitive systems operate reliably, equitably, and transparently across real-world human institutions."
+                    )
+                },
+                {
+                    "titulo": "Urban Transit Infrastructure in Intermediate Cities",
+                    "categoria": "Ciencia",
+                    "lectura": (
+                        "Modernizing urban public transit in intermediate municipalities involves strategic planning of dedicated bus corridors, "
+                        "non-motorized bicycle pathways, and synchronized traffic signaling to alleviate vehicular congestion and lower carbon emissions "
+                        "across urban residential sectors."
+                    )
+                },
+                {
+                    "titulo": "Short Bus Station Directions",
+                    "categoria": "Cotidiano",
+                    "lectura": (
+                        "Excuse me, could you please tell me how to get to the central bus terminal? Sure! First, walk straight along this main avenue "
+                        "for three short blocks until you see a large bakery. Then, turn left at the traffic light and walk past the public library. "
+                        "The blue ticket office is right across the street from the green supermarket. Have a very safe trip!"
+                    )
+                },
+            ])
+            st.session_state["df_lote_subido"] = None
+            st.session_state["explicaciones_por_caso"] = {}
+            st.session_state["ultimo_archivo_cargado"] = None
+            st.rerun()
 
-        # Ejecutar Inferencia con el modelo serializado (sin reentrenar)
+        if c_btn3.button("🔄 Limpiar / Restablecer Pantalla", use_container_width=True):
+            st.session_state["uploader_key_version"] += 1
+            st.session_state["df_cargado_pendiente"] = None
+            st.session_state["df_lote_subido"] = None
+            st.session_state["explicaciones_por_caso"] = {}
+            st.session_state["ultimo_archivo_cargado"] = None
+            st.rerun()
+
+        # Cargador de archivo plano con soporte nativo para separador '|'
+        st.write("")
+        c_up1, c_up2 = st.columns([2, 1], gap="medium")
+        with c_up1:
+            u_key = f"uploader_lecturas_v{st.session_state['uploader_key_version']}"
+            archivo_subido = st.file_uploader(
+                "O arrastra tu archivo plano de lecturas (separado por | o CSV):",
+                type=["txt", "csv"],
+                key=u_key
+            )
+            if archivo_subido is not None:
+                file_sig = (archivo_subido.name, archivo_subido.size)
+                if st.session_state.get("ultimo_archivo_cargado") != file_sig:
+                    try:
+                        import io
+                        contenido_raw = archivo_subido.getvalue().decode("utf-8", errors="replace")
+                        try:
+                            df_subido = pd.read_csv(io.StringIO(contenido_raw), sep="|")
+                            if len(df_subido.columns) < 2:
+                                df_subido = pd.read_csv(io.StringIO(contenido_raw), sep=None, engine="python")
+                        except Exception:
+                            df_subido = pd.read_csv(io.StringIO(contenido_raw), sep=None, engine="python")
+
+                        st.session_state["df_cargado_pendiente"] = df_subido
+                        st.session_state["df_lote_subido"] = None
+                        st.session_state["explicaciones_por_caso"] = {}
+                        st.session_state["ultimo_archivo_cargado"] = file_sig
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error al leer y procesar el archivo plano: {e}")
+
+        with c_up2:
+            st.caption("📋 Estructura requerida (separador |):")
+            st.markdown(
+                """<div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; padding:0.65rem 0.85rem; font-size:0.83rem; color:#475569; line-height:1.5;">
+    <strong>Columnas del Archivo Plano:</strong><br>
+    <code>titulo | categoria | lectura</code><br><br>
+    <em>El sistema calcula automáticamente el conteo de palabras, la dificultad léxica y clasifica el nivel.</em>
+</div>""",
+                unsafe_allow_html=True
+            )
+            ruta_plantilla = os.path.join(os.path.dirname(__file__), "..", "data", "ejemplos_demostracion", "lote_1_variado_niveles.txt")
+            if os.path.exists(ruta_plantilla):
+                with open(ruta_plantilla, "r", encoding="utf-8") as fp:
+                    plantilla_plana = fp.read()
+            else:
+                plantilla_plana = (
+                    "titulo|categoria|lectura\n"
+                    "My Morning Walk in the Park|Cotidiano|I wake up early in the morning and walk through the park. The air is fresh and the streets are very quiet. I like to say good morning to the friendly neighbors and buy fresh warm bread at the local bakery with my family.\n"
+                    "Ordering Coffee at a Local Shop|Cotidiano|Good afternoon! I would like to order a cup of black coffee and a small pastry, please. How much does it cost? Can I pay with credit card or cash? Thank you very much for your great service."
+                )
+            st.download_button(
+                "📥 Descargar Plantilla Plana (|)",
+                data=plantilla_plana,
+                file_name="plantilla_nuevas_lecturas.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+
+        # Botón de acción explícita para procesar el lote cargado
+        df_pendiente = st.session_state.get("df_cargado_pendiente")
         df_actual = st.session_state.get("df_lote_subido")
+
+        if df_pendiente is not None and df_actual is None:
+            st.write("")
+            st.info(
+                f"📁 **Lote preparado:** {len(df_pendiente)} lecturas listas para ser evaluadas. "
+                "Haz clic en el botón de abajo para que el modelo procese el texto, calcule las variables y emita la predicción:"
+            )
+            if st.button("🚀 Procesar Lote y Clasificar con IA", type="primary", use_container_width=True, key="btn_procesar_lote_ia"):
+                with st.spinner("Procesando textos, extrayendo métricas y clasificando con el modelo..."):
+                    df_prep = preparar_lote_entradas(df_pendiente)
+                    st.session_state["df_lote_subido"] = predecir_lote(df_prep)
+                    st.session_state["df_cargado_pendiente"] = None
+                    st.session_state["explicaciones_por_caso"] = {}
+                    st.rerun()
+
+        elif df_actual is None and df_pendiente is None:
+            st.write("")
+            st.info(
+                "💡 **Área de Demostración Lista:**\n\n"
+                "Selecciona uno de los botones de lote arriba (`⚡ 3 Casos de Control` o `📚 6 Lecturas Nuevas`) "
+                "o arrastra un archivo plano (`titulo|categoria|lectura`) para iniciar la demostración."
+            )
+
+        # Resultados de inferencia cuando el lote ha sido procesado
         if df_actual is not None and "conteo_palabras" in df_actual.columns and "dificultad_lexica" in df_actual.columns:
             try:
-                df_predicho = predecir_lote(df_actual)
+                df_predicho = df_actual
 
                 st.write("")
                 st.markdown("##### 📊 Resumen Ejecutivo del Lote Clasificado:")
@@ -458,22 +648,25 @@ else:
 
                 st.write("")
                 st.markdown("##### 📋 Tabla de Predicciones en Tiempo Real (Joblib sin Reentrenar):")
-                cols_mostrar = [c for c in ["id", "titulo", "caso", "conteo_palabras", "dificultad_lexica", "nivel_esperado", "prob_avanzado_%", "nivel_predicho", "certeza_%"] if c in df_predicho.columns]
+                cols_mostrar = [c for c in ["id", "titulo", "categoria", "conteo_palabras", "dificultad_lexica", "prob_avanzado_%", "nivel_predicho", "subnivel_estimado", "certeza_%"] if c in df_predicho.columns]
 
                 st.dataframe(
                     df_predicho[cols_mostrar],
                     use_container_width=True,
                     column_config={
-                        "conteo_palabras": "Palabras",
-                        "dificultad_lexica": "Dificultad (1-5)",
+                        "titulo": "Título de la Lectura",
+                        "categoria": "Categoría",
+                        "conteo_palabras": "Palabras (Calculadas)",
+                        "dificultad_lexica": "Dificultad (Calculada)",
                         "prob_avanzado_%": st.column_config.ProgressColumn(
                             "Prob. Avanzado",
                             format="%.1f%%",
                             min_value=0,
                             max_value=100,
                         ),
+                        "nivel_predicho": "Veredicto Oficial",
+                        "subnivel_estimado": "Subnivel MCER Sugerido",
                         "certeza_%": "Certeza",
-                        "nivel_predicho": "Veredicto del Modelo",
                     }
                 )
 
@@ -495,28 +688,169 @@ else:
 
                 fila_sel = df_predicho[df_predicho[col_id] == caso_sel].iloc[0]
 
-                if hay_ia_generativa_disponible():
-                    if st.button(f"✨ Justificar con Gemini para '{caso_sel}'", key="btn_justificar_gemini"):
-                        with st.spinner("Gemini está formulando la síntesis ejecutiva..."):
-                            desc = str(fila_sel.get("descripcion", fila_sel.get("titulo", f"Lectura '{caso_sel}'")))
-                            st.session_state["explicacion_lote"] = explicar_prediccion_ia(
-                                desc,
-                                fila_sel["nivel_predicho"],
-                                int(fila_sel["conteo_palabras"]),
-                                float(fila_sel["dificultad_lexica"]),
-                                float(fila_sel["certeza_%"]) / 100.0
-                            )
+                if "explicaciones_por_caso" not in st.session_state:
+                    st.session_state["explicaciones_por_caso"] = {}
 
-                    if st.session_state.get("explicacion_lote"):
+                if hay_ia_generativa_disponible():
+                    cj_b1, cj_b2 = st.columns([1, 1])
+                    with cj_b1:
+                        if st.button(f"✨ Justificar con Gemini para '{caso_sel}'", key=f"btn_justificar_{hash(caso_sel)}"):
+                            with st.spinner(f"Gemini está formulando la síntesis ejecutiva para '{caso_sel}'..."):
+                                desc = str(fila_sel.get("lectura", fila_sel.get("descripcion", fila_sel.get("titulo", f"Lectura '{caso_sel}'"))))
+                                st.session_state["explicaciones_por_caso"][caso_sel] = explicar_prediccion_ia(
+                                    desc[:300],
+                                    fila_sel["nivel_predicho"],
+                                    int(fila_sel["conteo_palabras"]),
+                                    float(fila_sel["dificultad_lexica"]),
+                                    float(fila_sel["certeza_%"]) / 100.0
+                                )
+                                st.rerun()
+
+                    with cj_b2:
+                        if caso_sel in st.session_state["explicaciones_por_caso"]:
+                            if st.button("🔄 Regenerar Análisis", key=f"btn_regen_{hash(caso_sel)}"):
+                                with st.spinner("Regenerando síntesis ejecutiva..."):
+                                    desc = str(fila_sel.get("lectura", fila_sel.get("descripcion", fila_sel.get("titulo", f"Lectura '{caso_sel}'"))))
+                                    st.session_state["explicaciones_por_caso"][caso_sel] = explicar_prediccion_ia(
+                                        desc[:300],
+                                        fila_sel["nivel_predicho"],
+                                        int(fila_sel["conteo_palabras"]),
+                                        float(fila_sel["dificultad_lexica"]),
+                                        float(fila_sel["certeza_%"]) / 100.0
+                                    )
+                                    st.rerun()
+
+                    if caso_sel in st.session_state["explicaciones_por_caso"]:
                         st.markdown(
-                            f"""<div style="background:#F8FAFC; border:1px solid #CBD5E1; border-left:5px solid #0F766E; padding:1.2rem 1.5rem; border-radius:10px; margin-top:0.8rem; font-size:0.92rem; line-height:1.7; color:#1E293B;">
-    <strong style="color:#0F766E; font-size:1rem;">Justificación Ejecutiva por IA para '{caso_sel}':</strong><br><br>
-    {st.session_state['explicacion_lote']}
+                            f"""<div style="background:#F8FAFC; border:1px solid #CBD5E1; border-left:5px solid #0F766E; padding:1rem 1.4rem; border-radius:10px; margin-top:0.8rem; font-size:0.93rem; line-height:1.55; color:#1E293B;">
+<div style="color:#0F766E; font-size:1.02rem; font-weight:700; margin-bottom:0.55rem;">Justificación Ejecutiva por IA para '{caso_sel}':</div>
+{st.session_state['explicaciones_por_caso'][caso_sel]}
 </div>""",
                             unsafe_allow_html=True
                         )
+                    else:
+                        st.caption(f"💡 Haz clic en el botón superior para generar la justificación pedagógica específica de '{caso_sel}'.")
                 else:
                     st.caption("ℹ️ Clave de Gemini no detectada en .env; justificación generativa inactiva.")
+
+                # =====================================================================
+                # VISTA PEDAGÓGICA INTEGRADA: LECTURA BILINGÜE Y TUTOR DEL CASO EVALUADO
+                # =====================================================================
+                st.write("")
+                st.markdown("---")
+                st.markdown(f"#### 📖 Vista Pedagógica de Lectura: '{caso_sel}'")
+                st.caption(f"Nivel asignado por la IA: **{fila_sel['subnivel_estimado']}** | Categoría: **{fila_sel.get('categoria', 'General')}**")
+
+                texto_eval_en = str(fila_sel.get("lectura", fila_sel.get("texto_ingles", fila_sel.get("descripcion", "Texto en proceso de carga."))))
+
+                col_lec_eval, col_met_eval = st.columns([2, 1], gap="large")
+
+                with col_lec_eval:
+                    tab_en_eval, tab_es_eval = st.tabs(["🇬🇧 Lectura en Inglés", "🇪🇸 Traducción al Español"])
+
+                    with tab_en_eval:
+                        st.markdown(
+                            f"""<div style="font-family:'Lexend',sans-serif; font-size:19px; line-height:1.9; color:#0F172A; background:#FFFFFF; padding:1.8rem 2rem; border-radius:16px; border:2px solid #E2E8F0; border-left:8px solid #2563EB; box-shadow:0 4px 15px rgba(0,0,0,0.04); margin-top:0.6rem;">
+    {texto_eval_en}
+</div>""",
+                            unsafe_allow_html=True
+                        )
+
+                    with tab_es_eval:
+                        clave_trad_eval = f"trad_eval_{hash(texto_eval_en)}"
+                        if clave_trad_eval not in st.session_state:
+                            with st.spinner("Generando traducción al español con IA..."):
+                                res_t = traducir_texto_espanol(caso_sel, texto_eval_en)
+                                # Solo almacenar en cache si fue exitosa
+                                if res_t and not res_t.startswith("⚠️") and not res_t.startswith("Error") and "alta demanda" not in res_t:
+                                    st.session_state[clave_trad_eval] = res_t
+                                else:
+                                    trad_eval_txt = res_t
+                        else:
+                            trad_eval_txt = st.session_state[clave_trad_eval]
+
+                        if clave_trad_eval in st.session_state:
+                            st.markdown(
+                                f"""<div style="font-family:'Lexend',sans-serif; font-size:19px; line-height:1.9; color:#064E3B; background:#F8FCF9; padding:1.8rem 2rem; border-radius:16px; border:2px solid #BBF7D0; border-left:8px solid #10B981; box-shadow:0 4px 15px rgba(0,0,0,0.04); margin-top:0.6rem;">
+    {st.session_state[clave_trad_eval]}
+</div>""",
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            st.warning(f"⚠️ {trad_eval_txt}")
+                            if st.button("🔄 Reintentar Traducción con IA", key=f"btn_reint_{hash(caso_sel)}"):
+                                st.session_state.pop(clave_trad_eval, None)
+                                st.rerun()
+
+                    st.write("")
+                    # Resumen guiado en 3 puntos clave
+                    clave_res_eval = f"resumen_eval_{hash(texto_eval_en)}"
+                    with st.expander("💡 ¿No entendiste la idea general? Ver Resumen en 3 Puntos Clave"):
+                        if st.button("Generar Resumen Guiado", key=f"btn_res_eval_{hash(caso_sel)}"):
+                            with st.spinner("El tutor está extrayendo los puntos clave..."):
+                                st.session_state[clave_res_eval] = generar_resumen_espanol(caso_sel, texto_eval_en)
+                        if clave_res_eval in st.session_state:
+                            st.markdown(st.session_state[clave_res_eval])
+
+                    st.write("")
+                    # Asistente interactivo / Chat con LexiaTutor
+                    st.markdown("#### 💬 Asistente Interactivo (LexiaTutor)")
+                    st.caption("Resuelve tus dudas sobre esta lectura evaluada:")
+                    clave_chat_eval = f"chat_eval_{hash(texto_eval_en)}"
+                    if clave_chat_eval not in st.session_state:
+                        st.session_state[clave_chat_eval] = []
+
+                    # Contenedor de chat con scroll
+                    chat_cont_eval = st.container(height=280)
+                    with chat_cont_eval:
+                        if not st.session_state[clave_chat_eval]:
+                            st.info("👋 ¡Hola! Soy LexiaTutor. Puedes preguntarme sobre vocabulario, gramática o el significado de cualquier frase de este texto.")
+                        for msj in st.session_state[clave_chat_eval]:
+                            with st.chat_message(msj["rol"]):
+                                st.markdown(msj["texto"])
+
+                    if prompt_chat := st.chat_input("Escribe tu pregunta sobre esta lectura aquí...", key=f"input_chat_eval_{hash(caso_sel)}"):
+                        st.session_state[clave_chat_eval].append({"rol": "user", "texto": prompt_chat})
+                        with st.spinner("LexiaTutor está pensando..."):
+                            resp_tutor = responder_duda_estudiante(prompt_chat, caso_sel, texto_eval_en)
+                            st.session_state[clave_chat_eval].append({"rol": "assistant", "texto": resp_tutor})
+                        st.rerun()
+
+                with col_met_eval:
+                    st.markdown("#### 📊 Información de Lectura")
+                    t_est = round(max(0.5, fila_sel["conteo_palabras"] / 90.0), 1)
+                    st.markdown(
+                        f"""<div class="metric-card-edu">
+    <div class="title">⏱️ TIEMPO ESTIMADO DE LECTURA</div>
+    <div class="val">~{t_est} minutos</div>
+</div>
+<div class="metric-card-edu">
+    <div class="title">📄 EXTENSIÓN DEL TEXTO</div>
+    <div class="val">{fila_sel['conteo_palabras']} palabras</div>
+</div>
+<div class="metric-card-edu">
+    <div class="title">🎯 NIVEL SUGERIDO</div>
+    <div class="val">{fila_sel['subnivel_estimado']}</div>
+</div>
+<div class="metric-card-edu">
+    <div class="title">🌟 COMPLEJIDAD LÉXICA</div>
+    <div class="val">{fila_sel['dificultad_lexica']} / 5.0</div>
+</div>""",
+                        unsafe_allow_html=True
+                    )
+
+                    dif_p = float(fila_sel["dificultad_lexica"]) / 5.0
+                    st.caption("Progreso de Complejidad:")
+                    st.progress(min(1.0, max(0.1, dif_p)))
+
+                    mision_txt = obtener_mision_pedagogica(fila_sel["subnivel_estimado"][:2])
+                    st.markdown(
+                        f"""<div class="pedagogical-box">
+    <h5>🎯 Meta de Aprendizaje</h5>
+    <p>{mision_txt}</p>
+</div>""",
+                        unsafe_allow_html=True
+                    )
 
             except Exception as e:
                 st.error(f"Error durante la inferencia: {e}")
@@ -525,9 +859,32 @@ else:
     with tab_diagnostico:
         st.markdown("#### 📊 Diagnóstico Técnico y Proyección en la Frontera de Decisión")
         st.write(
-            "Visualiza la separación matemática entre niveles y proyecta exactamente dónde cayeron las nuevas lecturas evaluadas:"
+            "Visualiza la separación matemática entre niveles, el corpus base de 40 lecturas y la proyección exacta de las lecturas evaluadas:"
         )
 
+        # Dataset base histórico de referencia colapsable
+        with st.expander("📁 Ver Dataset Base Histórico de Entrenamiento (40 Lecturas de Cartago)", expanded=False):
+            st.markdown(
+                "El modelo fue entrenado con un corpus equilibrado de **40 lecturas** graduadas según "
+                "el Marco Común Europeo de Referencia (MCER):"
+            )
+            c_b1, c_b2, c_b3, c_b4 = st.columns(4)
+            c_b1.metric("Lecturas A1 (Básico)", "10 lecturas", "~112 palabras")
+            c_b2.metric("Lecturas A2 (Básico)", "10 lecturas", "~201 palabras")
+            c_b3.metric("Lecturas B1 (Avanzado)", "10 lecturas", "~327 palabras")
+            c_b4.metric("Lecturas B2 (Avanzado)", "10 lecturas", "~473 palabras")
+
+            st.dataframe(
+                df_lecturas[["id", "titulo", "nivel_cefr", "conteo_palabras", "dificultad_lexica", "categoria"]],
+                use_container_width=True,
+                column_config={
+                    "conteo_palabras": "Palabras",
+                    "dificultad_lexica": "Dificultad (1-5)",
+                    "nivel_cefr": "Nivel MCER"
+                }
+            )
+
+        st.write("")
         col_diag1, col_diag2 = st.columns([1.1, 0.9], gap="large")
 
         with col_diag1:
@@ -559,3 +916,7 @@ else:
 </div>""",
                 unsafe_allow_html=True
             )
+
+
+
+

@@ -22,6 +22,20 @@ def cargar_modelo():
         )
     return joblib.load(RUTA_MODELO)
 
+def obtener_subnivel_mcer(p_av: float) -> str:
+    """
+    Calibra el subnivel MCER (A1, A2, B1, B2) según la probabilidad sigmoidal
+    de pertenencia a clase avanzada y los umbrales observados en el corpus base
+    (A1 < 5%, A2 < 50%, B1 < 92%, B2 >= 92%).
+    """
+    if p_av < 0.05:
+        return "A1 (Básico inicial)"
+    elif p_av < 0.50:
+        return "A2 (Básico consolidado)"
+    elif p_av < 0.92:
+        return "B1 (Intermedio frontera)"
+    return "B2 (Avanzado pleno)"
+
 def predecir_lectura(conteo_palabras: int, dificultad_lexica: float, tiempo_min: float = None):
     """
     Función de inferencia consumida por la interfaz gráfica (Streamlit) y módulos externos.
@@ -39,6 +53,7 @@ def predecir_lectura(conteo_palabras: int, dificultad_lexica: float, tiempo_min:
 
     nivel = "Avanzado (B1/B2)" if clase_pred == 1 else "Básico (A1/A2)"
     confianza = float(probabilidades[clase_pred])
+    subnivel = obtener_subnivel_mcer(float(probabilidades[1]))
 
     if tiempo_min is None or tiempo_min <= 0:
         tiempo_min = round(conteo_palabras / 90.0, 2)
@@ -47,6 +62,7 @@ def predecir_lectura(conteo_palabras: int, dificultad_lexica: float, tiempo_min:
     return {
         "clase_binaria": clase_pred,
         "nivel": nivel,
+        "subnivel_estimado": subnivel,
         "probabilidad_basico": float(probabilidades[0]),
         "probabilidad_avanzado": float(probabilidades[1]),
         "confianza": confianza,
@@ -71,6 +87,8 @@ def predecir_lote(df_lote: pd.DataFrame) -> pd.DataFrame:
     df_res["nivel_predicho"] = [
         "Avanzado (B1/B2)" if p == 1 else "Básico (A1/A2)" for p in preds
     ]
+    df_res["subnivel_estimado"] = [obtener_subnivel_mcer(float(p)) for p in probs[:, 1]]
+
     return df_res
 
 def generar_figura_proyeccion(df_nuevos=None, ruta_guardar=None):
