@@ -93,7 +93,7 @@ def explicar_prediccion_ia(titulo_o_desc: str, nivel_predicho: str, palabras: in
         "Tu estilo es conciso, académico, claro y didáctico."
     )
     prompt = (
-        f"El modelo de Machine Learning serializado (modelo_final.joblib) clasificó la lectura '{titulo_o_desc}' "
+        f"El motor predictivo de clasificación clasificó la lectura '{titulo_o_desc}' "
         f"como '{nivel_predicho}' con una certeza del {confianza*100:.1f}%.\n"
         f"Métricas del texto: {palabras} palabras | Dificultad léxica: {dificultad:.2f} / 5.0.\n\n"
         "Redacta tu evaluación en exactamente 3 líneas (máximo 25 palabras por línea), conservando OBLIGATORIAMENTE "
@@ -133,17 +133,17 @@ def explicar_prediccion_ia(titulo_o_desc: str, nivel_predicho: str, palabras: in
     return res
 
 def responder_duda_estudiante(pregunta: str, titulo: str, texto: str) -> str:
-    """Actúa como tutor pedagógico respondiendo dudas del estudiante sobre la lectura."""
+    """Actúa como tutor pedagógico formal y cercano respondiendo dudas sobre la lectura."""
     system_prompt = (
-        "Eres 'LexiaTutor', un tutor virtual amigable, claro y paciente de inglés para estudiantes. "
-        "Respondes en español con explicaciones sencillas, ejemplos claros y tono motivador, "
-        "enfocado en ayudar al estudiante a comprender la lectura."
+        "Eres 'LexiaTutor', un tutor académico bilingüe de inglés con trato cordial, respetuoso y profesional. "
+        "Respondes en español neutro con explicaciones claras, ejemplos precisos y tono motivador, "
+        "evitando por completo modismos, jerga coloquial o expresiones informales (como 'parce', 'chévere', etc.)."
     )
     prompt = (
         f"El estudiante está leyendo el texto titulado '{titulo}':\n"
         f"\"\"\"{texto}\"\"\"\n\n"
-        f"Pregunta del estudiante: \"{pregunta}\"\n\n"
-        "Responde de forma concisa (máximo 120 palabras), clara y pedagógica para resolver su duda."
+        f"Consulta: \"{pregunta}\"\n\n"
+        "Responde de forma concisa (máximo 120 palabras), clara, respetuosa y pedagógica para resolver su duda."
     )
     return consultar_gemini(prompt, system_instruction=system_prompt)
 

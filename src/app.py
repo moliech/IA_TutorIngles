@@ -135,28 +135,28 @@ def preparar_lote_entradas(df_in: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-# ------------------ ENCABEZADO MODERNO Y EDUCATIVO ------------------
+# ------------------ ENCABEZADO MODERNO Y COMERCIAL ------------------
 st.markdown(
     """<div class="lex-banner">
     <h1>📖 LexiaAdapt</h1>
     <p>Plataforma Inteligente de Lectura Adaptativa e Inferencia Lingüística</p>
-    <span class="sub-tag">🎓 Cartago, Valle del Cauca • Inteligencia Artificial 2026-02</span>
+    <span class="sub-tag">✨ EdTech AI Platform • Clasificación Adaptativa MCER &amp; Tutoría Bilingüe</span>
 </div>""",
     unsafe_allow_html=True
 )
 
 modo = st.radio(
-    "Seleccione el Modo de Operación:",
-    ["📖 Modo Estudiante (Lectura & Tutoría)", "🧠 Modo Auditoría IA (Simulador con Texto Libre)"],
+    "Módulo de la Plataforma:",
+    ["🧠 Clasificador Predictivo e Inferencia IA", "📖 Biblioteca Curada (Catálogo Base)"],
     horizontal=True
 )
 
 st.write("")
 
 # =========================================================================
-# VISTA 1: MODO ESTUDIANTE (LECTURA GUIADA, TRADUCCIÓN NATIVA Y TUTOR IA)
+# VISTA 2 (SECUNDARIA): BIBLIOTECA CURADA (LECTURA GUIADA, TRADUCCIÓN Y TUTOR)
 # =========================================================================
-if "Modo Estudiante" in modo:
+if "Biblioteca" in modo:
     st.markdown("<h3 style='font-size:1.6rem; font-weight:800; color:#0F2942; margin-bottom:0.2rem;'>📚 Biblioteca de Lecturas Graduadas</h3>", unsafe_allow_html=True)
     st.markdown("<p class='section-subtitle'>Selecciona el área temática y la lectura que deseas practicar hoy:</p>", unsafe_allow_html=True)
 
@@ -300,7 +300,7 @@ if "Modo Estudiante" in modo:
             chat_container = st.container(height=340)
             with chat_container:
                 if not st.session_state[clave_chat]:
-                    st.info("👋 ¡Hola! Soy LexiaTutor. Escribe una pregunta abajo o pulsa uno de los botones de arriba para empezar.")
+                    st.info("👋 ¡Hola! Soy LexiaTutor, tu asistente académico. Escribe una consulta abajo o selecciona una opción rápida para comenzar.")
                 for msj in st.session_state[clave_chat]:
                     with st.chat_message(msj["rol"]):
                         st.markdown(msj["texto"])
@@ -350,25 +350,25 @@ if "Modo Estudiante" in modo:
             )
 
 # =========================================================================
-# VISTA 2: DEMOSTRACIÓN DE INFERENCIA PREDICTIVA EN VIVO (MODELO SERIALIZADO)
+# VISTA 1 (PRINCIPAL): MOTOR DE CLASIFICACIÓN PREDICTIVA Y AUDITORÍA IA
 # =========================================================================
 else:
-    st.subheader("🔬 Demostración de Inferencia Predictiva en Vivo")
+    st.subheader("🧠 Motor de Clasificación Lingüística y Evaluación MCER")
     st.write(
-        "Demostración del sistema en tiempo real: el modelo serializado (`modelo_final.joblib`), "
-        "previamente entrenado con el corpus de 40 lecturas, evalúa y clasifica **nuevas lecturas inéditas sin reentrenar**."
+        "Evalúa lotes de lecturas inéditas en tiempo real. El motor calcula métricas léxicas automáticamente, "
+        "determina el nivel de competencia (A1–B2) y ofrece análisis pedagógico asistido por IA generativa."
     )
 
     tab_inferencia, tab_diagnostico = st.tabs([
-        "📥 Clasificación de Nuevas Lecturas (Inferencia sin Reentrenar)",
-        "📊 Diagnóstico y Proyección en la Frontera de Decisión"
+        "📥 Evaluación de Nuevas Lecturas",
+        "📊 Analítica del Modelo y Frontera de Decisión"
     ])
 
     # ------------------ PESTAÑA 1: INFERENCIA SOBRE NUEVAS LECTURAS ------------------
     with tab_inferencia:
-        st.markdown("#### ⚡ Evaluación de Nuevas Lecturas Inéditas")
+        st.markdown("#### ⚡ Análisis de Lotes y Documentos")
         st.write(
-            "Carga un lote de prueba o tu propio archivo CSV para someterlo al modelo serializado (`modelo_final.joblib`) sin reentrenar:"
+            "Selecciona un lote de muestra o carga tu propio archivo plano para clasificar lecturas automáticamente:"
         )
 
         # Estado de sesión para el lote activo (inicia en blanco por defecto)
@@ -379,7 +379,7 @@ else:
 
         # Botones de selección de lote con lecturas reales (el sistema calcula palabras y dificultad)
         c_btn1, c_btn2, c_btn3 = st.columns([1, 1, 1])
-        if c_btn1.button("⚡ 3 Casos de Control (Básico, Intermedio, Avanzado)", use_container_width=True):
+        if c_btn1.button("⚡ Lote Rápido (3 Niveles)", use_container_width=True):
             st.session_state["uploader_key_version"] += 1
             st.session_state["df_cargado_pendiente"] = pd.DataFrame([
                 {
@@ -449,7 +449,7 @@ else:
             st.session_state["ultimo_archivo_cargado"] = None
             st.rerun()
 
-        if c_btn2.button("📚 Lote de 6 Lecturas Nuevas (Inéditas)", use_container_width=True):
+        if c_btn2.button("📚 Lote Integral (6 Lecturas)", use_container_width=True):
             st.session_state["uploader_key_version"] += 1
             st.session_state["df_cargado_pendiente"] = pd.DataFrame([
                 {
@@ -535,7 +535,7 @@ else:
             st.session_state["ultimo_archivo_cargado"] = None
             st.rerun()
 
-        if c_btn3.button("🔄 Limpiar / Restablecer Pantalla", use_container_width=True):
+        if c_btn3.button("🔄 Restablecer Espacio de Trabajo", use_container_width=True):
             st.session_state["uploader_key_version"] += 1
             st.session_state["df_cargado_pendiente"] = None
             st.session_state["df_lote_subido"] = None
@@ -549,7 +549,7 @@ else:
         with c_up1:
             u_key = f"uploader_lecturas_v{st.session_state['uploader_key_version']}"
             archivo_subido = st.file_uploader(
-                "O arrastra tu archivo plano de lecturas (separado por | o CSV):",
+                "Cargar archivo de lecturas (delimitado por | o CSV):",
                 type=["txt", "csv"],
                 key=u_key
             )
@@ -609,11 +609,11 @@ else:
         if df_pendiente is not None and df_actual is None:
             st.write("")
             st.info(
-                f"📁 **Lote preparado:** {len(df_pendiente)} lecturas listas para ser evaluadas. "
-                "Haz clic en el botón de abajo para que el modelo procese el texto, calcule las variables y emita la predicción:"
+                f"📁 **Lote preparado:** {len(df_pendiente)} lecturas listas para evaluación. "
+                "Presiona el botón para extraer variables lingüísticas y clasificar:"
             )
-            if st.button("🚀 Procesar Lote y Clasificar con IA", type="primary", use_container_width=True, key="btn_procesar_lote_ia"):
-                with st.spinner("Procesando textos, extrayendo métricas y clasificando con el modelo..."):
+            if st.button("🚀 Ejecutar Clasificación con IA", type="primary", use_container_width=True, key="btn_procesar_lote_ia"):
+                with st.spinner("Procesando textos, extrayendo métricas y clasificando..."):
                     df_prep = preparar_lote_entradas(df_pendiente)
                     st.session_state["df_lote_subido"] = predecir_lote(df_prep)
                     st.session_state["df_cargado_pendiente"] = None
@@ -623,9 +623,9 @@ else:
         elif df_actual is None and df_pendiente is None:
             st.write("")
             st.info(
-                "💡 **Área de Demostración Lista:**\n\n"
-                "Selecciona uno de los botones de lote arriba (`⚡ 3 Casos de Control` o `📚 6 Lecturas Nuevas`) "
-                "o arrastra un archivo plano (`titulo|categoria|lectura`) para iniciar la demostración."
+                "💡 **Motor de Evaluación Listo:**\n\n"
+                "Selecciona un lote de muestra (`⚡ Lote Rápido` o `📚 Lote Integral`) "
+                "o carga un archivo plano (`titulo|categoria|lectura`) para iniciar el análisis."
             )
 
         # Resultados de inferencia cuando el lote ha sido procesado
@@ -641,13 +641,13 @@ else:
                 certeza_media = float(df_predicho["certeza_%"].mean())
 
                 m_c1, m_c2, m_c3, m_c4 = st.columns(4)
-                m_c1.metric("Lecturas Nuevas", f"{n_total}")
-                m_c2.metric("Clasificadas Básicas (A1/A2)", f"{n_basico}", f"{n_basico/n_total*100:.0f}% del lote")
-                m_c3.metric("Clasificadas Avanzadas (B1/B2)", f"{n_avanzado}", f"{n_avanzado/n_total*100:.0f}% del lote")
+                m_c1.metric("Lecturas Evaluadas", f"{n_total}")
+                m_c2.metric("Nivel Básico (A1/A2)", f"{n_basico}", f"{n_basico/n_total*100:.0f}% del lote")
+                m_c3.metric("Nivel Avanzado (B1/B2)", f"{n_avanzado}", f"{n_avanzado/n_total*100:.0f}% del lote")
                 m_c4.metric("Certeza Promedio", f"{certeza_media:.1f}%", "Confianza probabilística")
 
                 st.write("")
-                st.markdown("##### 📋 Tabla de Predicciones en Tiempo Real (Joblib sin Reentrenar):")
+                st.markdown("##### 📋 Resultados de Clasificación Lingüística:")
                 cols_mostrar = [c for c in ["id", "titulo", "categoria", "conteo_palabras", "dificultad_lexica", "prob_avanzado_%", "nivel_predicho", "subnivel_estimado", "certeza_%"] if c in df_predicho.columns]
 
                 st.dataframe(
@@ -656,16 +656,16 @@ else:
                     column_config={
                         "titulo": "Título de la Lectura",
                         "categoria": "Categoría",
-                        "conteo_palabras": "Palabras (Calculadas)",
-                        "dificultad_lexica": "Dificultad (Calculada)",
+                        "conteo_palabras": "Palabras",
+                        "dificultad_lexica": "Dificultad (1–5)",
                         "prob_avanzado_%": st.column_config.ProgressColumn(
                             "Prob. Avanzado",
                             format="%.1f%%",
                             min_value=0,
                             max_value=100,
                         ),
-                        "nivel_predicho": "Veredicto Oficial",
-                        "subnivel_estimado": "Subnivel MCER Sugerido",
+                        "nivel_predicho": "Clasificación General",
+                        "subnivel_estimado": "Nivel MCER Estimado",
                         "certeza_%": "Certeza",
                     }
                 )
@@ -673,7 +673,7 @@ else:
                 # Botón para descargar el reporte CSV
                 csv_bytes = df_predicho.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label="📥 Descargar Reporte CSV de Inferencia",
+                    label="📥 Exportar Reporte de Resultados (.csv)",
                     data=csv_bytes,
                     file_name="reporte_prediccion_lexiaadapt.csv",
                     mime="text/csv",
@@ -681,10 +681,10 @@ else:
 
                 # Sección de explicabilidad con Gemini sobre un caso
                 st.write("")
-                st.markdown("##### ✨ Justificación Pedagógica Ejecutiva con IA Generativa (Gemini):")
+                st.markdown("##### ✨ Análisis Ejecutivo y Recomendación Pedagógica (IA):")
                 col_id = "titulo" if "titulo" in df_predicho.columns else ("caso" if "caso" in df_predicho.columns else "id")
                 opciones_casos = df_predicho[col_id].tolist()
-                caso_sel = st.selectbox("Selecciona una lectura evaluada para ver su análisis:", opciones_casos, key="select_caso_gemini")
+                caso_sel = st.selectbox("Selecciona una lectura evaluada para inspeccionar su diagnóstico:", opciones_casos, key="select_caso_gemini")
 
                 fila_sel = df_predicho[df_predicho[col_id] == caso_sel].iloc[0]
 
@@ -694,7 +694,7 @@ else:
                 if hay_ia_generativa_disponible():
                     cj_b1, cj_b2 = st.columns([1, 1])
                     with cj_b1:
-                        if st.button(f"✨ Justificar con Gemini para '{caso_sel}'", key=f"btn_justificar_{hash(caso_sel)}"):
+                        if st.button(f"✨ Generar Análisis IA para '{caso_sel}'", key=f"btn_justificar_{hash(caso_sel)}"):
                             with st.spinner(f"Gemini está formulando la síntesis ejecutiva para '{caso_sel}'..."):
                                 desc = str(fila_sel.get("lectura", fila_sel.get("descripcion", fila_sel.get("titulo", f"Lectura '{caso_sel}'"))))
                                 st.session_state["explicaciones_por_caso"][caso_sel] = explicar_prediccion_ia(
@@ -723,22 +723,22 @@ else:
                     if caso_sel in st.session_state["explicaciones_por_caso"]:
                         st.markdown(
                             f"""<div style="background:#F8FAFC; border:1px solid #CBD5E1; border-left:5px solid #0F766E; padding:1rem 1.4rem; border-radius:10px; margin-top:0.8rem; font-size:0.93rem; line-height:1.55; color:#1E293B;">
-<div style="color:#0F766E; font-size:1.02rem; font-weight:700; margin-bottom:0.55rem;">Justificación Ejecutiva por IA para '{caso_sel}':</div>
+<div style="color:#0F766E; font-size:1.02rem; font-weight:700; margin-bottom:0.55rem;">Diagnóstico Pedagógico por IA — '{caso_sel}':</div>
 {st.session_state['explicaciones_por_caso'][caso_sel]}
 </div>""",
                             unsafe_allow_html=True
                         )
                     else:
-                        st.caption(f"💡 Haz clic en el botón superior para generar la justificación pedagógica específica de '{caso_sel}'.")
+                        st.caption(f"💡 Haz clic en el botón superior para generar el diagnóstico pedagógico de '{caso_sel}'.")
                 else:
-                    st.caption("ℹ️ Clave de Gemini no detectada en .env; justificación generativa inactiva.")
+                    st.caption("ℹ️ Clave de API generativa no configurada; módulo de diagnóstico IA inactivo.")
 
                 # =====================================================================
                 # VISTA PEDAGÓGICA INTEGRADA: LECTURA BILINGÜE Y TUTOR DEL CASO EVALUADO
                 # =====================================================================
                 st.write("")
                 st.markdown("---")
-                st.markdown(f"#### 📖 Vista Pedagógica de Lectura: '{caso_sel}'")
+                st.markdown(f"#### 📖 Lector Interactivo y Asistencia Bilingüe: '{caso_sel}'")
                 st.caption(f"Nivel asignado por la IA: **{fila_sel['subnivel_estimado']}** | Categoría: **{fila_sel.get('categoria', 'General')}**")
 
                 texto_eval_en = str(fila_sel.get("lectura", fila_sel.get("texto_ingles", fila_sel.get("descripcion", "Texto en proceso de carga."))))
@@ -804,7 +804,7 @@ else:
                     chat_cont_eval = st.container(height=280)
                     with chat_cont_eval:
                         if not st.session_state[clave_chat_eval]:
-                            st.info("👋 ¡Hola! Soy LexiaTutor. Puedes preguntarme sobre vocabulario, gramática o el significado de cualquier frase de este texto.")
+                            st.info("👋 ¡Hola! Soy LexiaTutor, tu asistente académico. Puedes consultarme sobre vocabulario, gramática o el sentido de cualquier pasaje de este texto.")
                         for msj in st.session_state[clave_chat_eval]:
                             with st.chat_message(msj["rol"]):
                                 st.markdown(msj["texto"])
@@ -855,17 +855,17 @@ else:
             except Exception as e:
                 st.error(f"Error durante la inferencia: {e}")
 
-    # ------------------ PESTAÑA 2: DIAGNÓSTICO Y PROYECCIÓN ------------------
+    # ------------------ PESTAÑA 2: ANALÍTICA DEL MODELO Y PROYECCIÓN ------------------
     with tab_diagnostico:
-        st.markdown("#### 📊 Diagnóstico Técnico y Proyección en la Frontera de Decisión")
+        st.markdown("#### 📊 Analítica Predictiva y Frontera de Decisión")
         st.write(
-            "Visualiza la separación matemática entre niveles, el corpus base de 40 lecturas y la proyección exacta de las lecturas evaluadas:"
+            "Visualiza la separación matemática entre niveles lingüísticos, el catálogo base de referencia y la proyección de los documentos evaluados:"
         )
 
         # Dataset base histórico de referencia colapsable
-        with st.expander("📁 Ver Dataset Base Histórico de Entrenamiento (40 Lecturas de Cartago)", expanded=False):
+        with st.expander("📁 Explorar Catálogo Base de Referencia (40 Lecturas Graduadas)", expanded=False):
             st.markdown(
-                "El modelo fue entrenado con un corpus equilibrado de **40 lecturas** graduadas según "
+                "El motor predictivo se encuentra calibrado sobre un corpus equilibrado de **40 lecturas** graduadas según "
                 "el Marco Común Europeo de Referencia (MCER):"
             )
             c_b1, c_b2, c_b3, c_b4 = st.columns(4)
@@ -888,34 +888,49 @@ else:
         col_diag1, col_diag2 = st.columns([1.1, 0.9], gap="large")
 
         with col_diag1:
-            st.markdown("##### 1. Proyección de Nuevas Lecturas sobre la Frontera Matemática")
+            st.markdown("##### 1. Mapa de Proyección sobre la Frontera de Decisión")
             df_lote_act = st.session_state.get("df_lote_subido")
             fig_proyeccion = generar_figura_proyeccion(df_lote_act)
             st.pyplot(fig_proyeccion)
 
             st.markdown(
                 """<div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:0.85rem 1rem; margin-top:0.4rem; font-size:0.86rem; color:#334155; line-height:1.6;">
-    <strong>Interpretación Visual:</strong> Los círculos azules (Básico A1/A2) y rojos (Avanzado B1/B2) representan el corpus base de 40 lecturas. La línea discontinua marca la frontera de decisión (P = 50%). Las <strong>estrellas doradas</strong> proyectan las nuevas lecturas evaluadas en vivo, demostrando de forma transparente por qué cada una fue clasificada.
+    <strong>Interpretación Visual:</strong> Los círculos azules (Básico A1/A2) y rojos (Avanzado B1/B2) representan el corpus base de referencia. La línea discontinua marca la frontera de decisión (P = 50%). Las <strong>estrellas doradas</strong> proyectan los nuevos documentos evaluados en tiempo real.
 </div>""",
                 unsafe_allow_html=True
             )
 
         with col_diag2:
-            st.markdown("##### 2. Matriz de Confusión Oficial (Datos de Prueba)")
+            st.markdown("##### 2. Matriz de Rendimiento en Validación")
             ruta_matriz = os.path.join(os.path.dirname(__file__), "..", "graficos", "matriz_confusion_sklearn.png")
             if os.path.exists(ruta_matriz):
                 st.image(ruta_matriz, width=380)
 
             st.markdown(
                 """<div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px; padding:0.85rem 1rem; margin-top:0.4rem; font-size:0.86rem; color:#334155; line-height:1.6;">
-    <strong>Evaluación en Test (8 lecturas):</strong> Exactitud del 100%, F1-Score = 1.0, cero falsos positivos y cero falsos negativos.<br><br>
-    <strong>Pesos del Pipeline ($w_1 x_1 + w_2 x_2 + b = 0$):</strong><br>
-    • $w_1 = +1.64$ (Palabras): Mayor extensión incrementa la probabilidad de nivel avanzado.<br>
+    <strong>Métricas de Validación (8 lecturas de prueba):</strong> Exactitud del 100%, F1-Score = 1.0, cero falsos positivos y cero falsos negativos.<br><br>
+    <strong>Parámetros del Clasificador Lineal ($w_1 x_1 + w_2 x_2 + b = 0$):</strong><br>
+    • $w_1 = +1.64$ (Extensión): Mayor cantidad de palabras incrementa la probabilidad de nivel avanzado.<br>
     • $w_2 = +1.50$ (Dificultad léxica): Mayor complejidad sintáctica exige mayor competencia lectora.<br>
     • $b = +0.08$ (Sesgo balanceado del umbral).
 </div>""",
                 unsafe_allow_html=True
             )
+
+# ------------------ FOOTER CORPORATIVO MINIMALISTA ------------------
+st.markdown(
+    """<div style="margin-top:3rem; padding:1.4rem 1rem 0.6rem 1rem; border-top:1px solid #E2E8F0; text-align:center; color:#64748B; font-size:0.84rem; line-height:1.7;">
+    <div style="color:#0F2942; font-weight:700; font-size:0.9rem; margin-bottom:0.2rem;">
+        📖 LexiaAdapt © 2026 · Plataforma EdTech de Evaluación Lingüística
+    </div>
+    <div>
+        Ingeniería &amp; IA: <strong style="color:#334155;">Jhon Esteban Molina</strong> · <strong style="color:#334155;">Heiber Lozano</strong>
+        &nbsp;|&nbsp; Respaldo Institucional: <strong style="color:#0F2942;">COTECNOVA</strong>
+        &nbsp;|&nbsp; <a href="https://github.com/moliech/IA_TutorIngles" target="_blank" rel="noopener noreferrer" style="color:#2563EB; text-decoration:none; font-weight:600;">Repositorio en GitHub ↗</a>
+    </div>
+</div>""",
+    unsafe_allow_html=True
+)
 
 
 
