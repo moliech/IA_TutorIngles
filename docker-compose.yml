@@ -9,7 +9,9 @@ services:
       - ./informes:/app/informes
       - ./notebooks:/app/notebooks
       - ./.streamlit:/app/.streamlit
-      - ./.env:/app/.env
+    env_file:
+      - path: ./.env
+        required: false
     ports:
       - "8501:8501"
     working_dir: /app
